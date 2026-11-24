@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { Avatar } from "@/components/Avatar";
-import { buttonClass } from "@/components/Button";
 import { Heatmap } from "@/components/charts/Heatmap";
 import { ProgressLegend } from "@/components/charts/ProgressChart";
 import { FriendButton } from "@/components/FriendButton";
@@ -139,13 +138,7 @@ export function ProfileView() {
           </p>
         </div>
       </div>
-      {base.is_self ? (
-        <Link href="/settings" className={buttonClass("secondary")}>
-          Settings
-        </Link>
-      ) : (
-        SOCIAL && isSignedIn && me && <FriendButton username={user.username} />
-      )}
+      {SOCIAL && !base.is_self && isSignedIn && me && <FriendButton username={user.username} />}
     </div>
   );
 

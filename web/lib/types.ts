@@ -25,10 +25,6 @@ export type GameDetail = GameSummary & { problems: SolvedProblem[] };
 
 export type Page<T> = { items: T[]; next_cursor: string | null };
 
-export type OpSpeeds = Record<Op, number | null>;
-
-export type TimeBucket = { bucket: "morning" | "afternoon" | "evening" | "late_night"; games: number; avg_score: number | null };
-
 /** Strangers only get `user.username` and `pb`; everything else needs `visible`. */
 export type Stats = {
   user: UserBrief;
@@ -40,8 +36,6 @@ export type Stats = {
   improvement?: number | null;
   streak?: number;
   last_played?: string | null;
-  op_speed?: { last10: OpSpeeds; all: OpSpeeds };
-  time_of_day?: TimeBucket[];
 };
 
 export type RangeKey = "30d" | "90d" | "1y" | "all";

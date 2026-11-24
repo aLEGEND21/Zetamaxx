@@ -51,24 +51,6 @@ export class GameEngine {
   }
 }
 
-export type OpAverages = Record<Op, number | null>;
-
-/** Mean solve time per operation, null for operations that never came up. */
-export function opAverages(problems: SolvedProblem[]): OpAverages {
-  const totals: Record<Op, { sum: number; n: number }> = {
-    add: { sum: 0, n: 0 },
-    sub: { sum: 0, n: 0 },
-    mul: { sum: 0, n: 0 },
-    div: { sum: 0, n: 0 },
-  };
-  for (const p of problems) {
-    totals[p.op].sum += p.ms;
-    totals[p.op].n += 1;
-  }
-  const avg = (op: Op) => (totals[op].n ? Math.round(totals[op].sum / totals[op].n) : null);
-  return { add: avg("add"), sub: avg("sub"), mul: avg("mul"), div: avg("div") };
-}
-
 export function slowest(problems: SolvedProblem[], count = 5): SolvedProblem[] {
   return [...problems].sort((x, y) => y.ms - x.ms).slice(0, count);
 }

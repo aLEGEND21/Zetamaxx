@@ -8,10 +8,9 @@ which the caller derives from the profile owner's timezone.
 
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import and_, case, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.game.settings import OPS
 from app.models import Game
 
 RECENT_GAMES = 10
@@ -19,14 +18,6 @@ ROLLING_WINDOW = 7
 ACTIVITY_DAYS = 365
 IMPROVEMENT_DAYS = 30
 RANGE_DAYS = {"30d": 30, "90d": 90, "1y": 365, "all": None}
-TIME_BUCKETS = ("morning", "afternoon", "evening", "late_night")
-
-_AVG_COLUMNS = {
-    "add": Game.avg_ms_add,
-    "sub": Game.avg_ms_sub,
-    "mul": Game.avg_ms_mul,
-    "div": Game.avg_ms_div,
-}
 
 
 def game_filters(user_id: str, settings_hash: str | None = None) -> list:
@@ -67,17 +58,6 @@ async def improvement(session: AsyncSession, filters: list, now: datetime) -> fl
     return round(current - earlier, 2)
 
 
-async def op_speed(session: AsyncSession, filters: list, last_n: int | None = None) -> dict[str, int | None]:
-    """Mean solve time (ms) per operation: the mean of each game's per-op average."""
-    columns = [column.label(op) for op, column in _AVG_COLUMNS.items()]
-    query = select(*columns).where(*filters)
-    if last_n is not None:
-        query = query.order_by(Game.finished_at.desc(), Game.id.desc()).limit(last_n)
-    games = query.subquery()
-    row = (await session.execute(select(*[func.avg(games.c[op]) for op in OPS]))).one()
-    return {op: None if value is None else round(float(value)) for op, value in zip(OPS, row, strict=True)}
-
-
 async def last_played(session: AsyncSession, filters: list) -> str | None:
     query = select(Game.local_finished_at).where(*filters)
     return (await session.execute(query.order_by(Game.finished_at.desc()).limit(1))).scalar()
@@ -96,27 +76,6 @@ async def streak(session: AsyncSession, filters: list, today: date) -> int:
         count += 1
         expected -= timedelta(days=1)
     return count
-
-
-async def time_of_day(session: AsyncSession, filters: list) -> list[dict]:
-    """Games and mean score by part of the day, from the stored `local_hour`."""
-    hour = Game.local_hour
-    bucket = case(
-        (and_(hour >= 5, hour < 12), "morning"),
-        (and_(hour >= 12, hour < 17), "afternoon"),
-        (and_(hour >= 17, hour < 22), "evening"),
-        else_="late_night",
-    ).label("bucket")
-    query = select(bucket, func.count(), func.avg(Game.score)).where(*filters).group_by(bucket)
-    found = {name: (games, avg) for name, games, avg in await session.execute(query)}
-    return [
-        {
-            "bucket": name,
-            "games": found.get(name, (0, None))[0],
-            "avg_score": None if name not in found else round(float(found[name][1]), 2),
-        }
-        for name in TIME_BUCKETS
-    ]
 
 
 async def daily_series(session: AsyncSession, filters: list, since: date | None = None) -> list[dict]:

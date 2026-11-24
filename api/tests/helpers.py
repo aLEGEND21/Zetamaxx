@@ -48,13 +48,12 @@ async def add_game(
     finished_at: datetime,
     *,
     settings: dict | None = None,
-    avg_ms: dict | None = None,
     timezone: str | None = None,
 ) -> Game:
     """Insert a finished game directly (for stats tests that need many games on exact dates)."""
     settings = settings or STANDARD
     problems = solved(1, settings, score, ms=1000)
-    averages = {**op_averages(problems), **(avg_ms or {})}
+    averages = op_averages(problems)
     async with SessionLocal() as session:
         game_start = GameStart(
             id=new_id(),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GameEngine, opAverages, slowest } from "@/lib/engine";
+import { GameEngine, slowest } from "@/lib/engine";
 import { generateSequence } from "@/lib/generator";
 import { STANDARD } from "@/lib/settings";
 import { digitsOnly, displaySeconds, isOver, remainingMs } from "@/lib/timer";
@@ -85,10 +85,6 @@ describe("result helpers", () => {
     { op: "add" as const, a: 3, b: 4, ms: 2000 },
     { op: "mul" as const, a: 5, b: 6, ms: 900 },
   ];
-
-  it("averages per operation", () => {
-    expect(opAverages(problems)).toEqual({ add: 1500, sub: null, mul: 900, div: null });
-  });
 
   it("lists the slowest problems first", () => {
     expect(slowest(problems, 2).map((p) => p.ms)).toEqual([2000, 1000]);

@@ -61,11 +61,6 @@ async def user_stats(
         "improvement": await stats.improvement(session, filters, utcnow()),
         "streak": await stats.streak(session, filters, today_in(target.timezone)),
         "last_played": await stats.last_played(session, filters),
-        "op_speed": {
-            "last10": await stats.op_speed(session, filters, last_n=stats.RECENT_GAMES),
-            "all": await stats.op_speed(session, filters),
-        },
-        "time_of_day": await stats.time_of_day(session, filters),
     }
 
 

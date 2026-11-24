@@ -28,8 +28,6 @@ async def test_empty_profile(client, make_user, clock):
     assert body["visible"] is True and body["is_self"] is True
     assert body["pb"] is None and body["games"] == 0 and body["recent_avg"] is None
     assert body["improvement"] is None and body["streak"] == 0 and body["last_played"] is None
-    assert body["op_speed"]["all"] == {"add": None, "sub": None, "mul": None, "div": None}
-    assert [b["games"] for b in body["time_of_day"]] == [0, 0, 0, 0]
 
     series = await client.get("/api/users/alice/series", headers=auth(alice))
     assert series.json()["points"] == []
@@ -88,47 +86,6 @@ async def test_improvement_is_null_without_history_30_days_back(client, make_use
     alice = await make_user("alice")
     await add_game(alice, 30, utc(2026, 6, 14, 16))
     assert (await get_stats(client, alice))["improvement"] is None
-
-
-async def test_per_operation_speed(client, make_user, clock):
-    alice = await make_user("alice")
-    # 12 games. `add` is 3000ms in the two oldest and 1000ms in the last 10.
-    for i in range(12):
-        add_ms = 3000 if i < 2 else 1000
-        await add_game(
-            alice,
-            10,
-            utc(2026, 6, 1, 15) + timedelta(hours=i),
-            avg_ms={"add": add_ms, "sub": 2000, "mul": None, "div": 1500 + i},
-        )
-    speed = (await get_stats(client, alice))["op_speed"]
-    assert speed["last10"]["add"] == 1000
-    assert speed["all"]["add"] == round((2 * 3000 + 10 * 1000) / 12)  # 1333
-    assert speed["all"]["sub"] == 2000 and speed["last10"]["sub"] == 2000
-    assert speed["all"]["mul"] is None  # never came up
-    assert speed["last10"]["div"] == round(sum(1500 + i for i in range(2, 12)) / 10)
-
-
-async def test_time_of_day_buckets(client, make_user, clock):
-    alice = await make_user("alice", timezone="UTC")
-    # hour -> bucket: 5-11 morning, 12-16 afternoon, 17-21 evening, 22-4 late night
-    for hour, score in [
-        (5, 10),
-        (11, 20),
-        (12, 30),
-        (16, 40),
-        (17, 50),
-        (21, 60),
-        (22, 70),
-        (4, 80),
-        (0, 90),
-    ]:
-        await add_game(alice, score, utc(2026, 6, 10, hour, 30))
-    buckets = {b["bucket"]: b for b in (await get_stats(client, alice))["time_of_day"]}
-    assert (buckets["morning"]["games"], buckets["morning"]["avg_score"]) == (2, 15.0)
-    assert (buckets["afternoon"]["games"], buckets["afternoon"]["avg_score"]) == (2, 35.0)
-    assert (buckets["evening"]["games"], buckets["evening"]["avg_score"]) == (2, 55.0)
-    assert (buckets["late_night"]["games"], buckets["late_night"]["avg_score"]) == (3, 80.0)
 
 
 async def test_daily_series_and_rolling_average(client, make_user, clock):

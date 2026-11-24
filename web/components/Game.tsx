@@ -84,7 +84,7 @@ function SaveStatus({ save }: { save: SaveState }) {
     case "local":
       return <span>Played offline, so this game wasn&apos;t saved.</span>;
     case "empty":
-      return <span data-testid="not-counted">Nothing was answered, so this game doesn&apos;t count.</span>;
+      return <span data-testid="not-attempted">Game not attempted</span>;
     case "rejected":
       return <span className="text-danger">Not saved: {save.message}</span>;
   }
@@ -317,6 +317,7 @@ export function Game() {
         {view.phase === "finished" && (
           <Results
             score={view.score}
+            attempted={view.save.state !== "empty"}
             problems={view.problems}
             settings={view.settings}
             status={<SaveStatus save={view.save} />}

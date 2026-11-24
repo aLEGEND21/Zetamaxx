@@ -111,10 +111,6 @@ export async function retryQueuedFinishes(): Promise<void> {
   }
 }
 
-export function hasPendingClaim(): boolean {
-  return read<PendingClaim | null>(CLAIM_KEY, null) !== null;
-}
-
 /** After sign-in: attach the guest game played just before to this account. */
 export async function claimPendingGame(): Promise<void> {
   const claim = read<PendingClaim | null>(CLAIM_KEY, null);
