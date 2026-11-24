@@ -1,0 +1,40 @@
+# Production only. Development runs without Docker: see README ("Run it locally").
+#
+#   host 127.0.0.1:${APP_PORT}  ->  web (Next.js)  --/api/*-->  api (FastAPI)  ->  /data (named volume)
+#
+# The server's own nginx forwards the subdomain to 127.0.0.1:${APP_PORT} and
+# handles TLS. Nothing here binds ports 80 or 443.
+
+services:
+  api:
+    build: ./api
+    restart: unless-stopped
+    environment:
+      DATABASE_PATH: /data/zetamaxx.db
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:?set CLERK_SECRET_KEY in .env}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?set ALLOWED_ORIGINS in .env, e.g. https://zetamaxx.arnavm.com}
+    volumes:
+      # The database lives here. Only this container mounts it: SQLite must have one writer.
+      - zetamaxx-data:/data
+    # No ports: reachable only from `web` over the compose network.
+
+  web:
+    build:
+      context: ./web
+      args:
+        API_URL: http://api:8000
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:?set NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY in .env}
+    restart: unless-stopped
+    environment:
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:?set CLERK_SECRET_KEY in .env}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      # The app's only contract with the outside: one HTTP port, on localhost only.
+      - "127.0.0.1:${APP_PORT:-3100}:3000"
+
+volumes:
+  zetamaxx-data:
+    name: zetamaxx-data
