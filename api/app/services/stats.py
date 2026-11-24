@@ -17,7 +17,7 @@ RECENT_GAMES = 10
 ROLLING_WINDOW = 7
 ACTIVITY_DAYS = 365
 IMPROVEMENT_DAYS = 30
-RANGE_DAYS = {"30d": 30, "90d": 90, "1y": 365, "all": None}
+RANGE_DAYS = {"7d": 7, "30d": 30, "90d": 90, "1y": 365, "all": None}
 
 
 def game_filters(user_id: str, settings_hash: str | None = None) -> list:
@@ -117,6 +117,36 @@ async def daily_series(session: AsyncSession, filters: list, since: date | None 
             "rolling_avg": round(float(rolling_by_date[local_date]), 2),
         }
         for local_date, best, avg, games in await session.execute(daily)
+    ]
+
+
+async def game_series(session: AsyncSession, filters: list, since: date) -> list[dict]:
+    """One point per game since `since`: when it was played (the player's local
+    time), its score, and the 7-game rolling mean as it stood after that game."""
+    # As in `daily_series`, the rolling mean runs over the whole game sequence
+    # before the date filter, so the first games in range average over earlier ones.
+    rolled = (
+        select(
+            Game.local_finished_at.label("at"),
+            Game.local_date.label("local_date"),
+            Game.score.label("score"),
+            func.avg(Game.score)
+            .over(order_by=(Game.finished_at, Game.id), rows=(-(ROLLING_WINDOW - 1), 0))
+            .label("rolling"),
+            Game.finished_at.label("finished_at"),
+            Game.id.label("id"),
+        )
+        .where(*filters)
+        .subquery()
+    )
+    query = (
+        select(rolled.c.at, rolled.c.score, rolled.c.rolling)
+        .where(rolled.c.local_date >= since.isoformat())
+        .order_by(rolled.c.finished_at, rolled.c.id)
+    )
+    return [
+        {"at": at, "score": score, "rolling_avg": round(float(rolling), 2)}
+        for at, score, rolling in await session.execute(query)
     ]
 
 

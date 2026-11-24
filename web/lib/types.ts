@@ -39,8 +39,17 @@ export type Stats = {
 };
 
 export type RangeKey = "30d" | "90d" | "1y" | "all";
+
+/** Ranges of the profile's progress chart. */
+export type ProgressRange = "7d" | "30d" | "90d" | "1y";
 export type SeriesPoint = { date: string; best: number; avg: number; games: number; rolling_avg: number };
-export type Series = { range: RangeKey; from: string; to: string; points: SeriesPoint[] };
+/** One game, at the player's local time, e.g. "2026-11-24T22:41:05". */
+export type GamePoint = { at: string; score: number; rolling_avg: number };
+/** The 7-day range has one point per game; longer ranges have one per day. */
+export type Series = { range: ProgressRange; from: string; to: string } & (
+  | { per: "game"; points: GamePoint[] }
+  | { per: "day"; points: SeriesPoint[] }
+);
 export type Activity = { days: { date: string; games: number }[]; total: number };
 export type ConfigSummary = {
   settings_hash: string;

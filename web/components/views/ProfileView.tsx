@@ -7,18 +7,18 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { Heatmap } from "@/components/charts/Heatmap";
-import { ProgressLegend } from "@/components/charts/ProgressChart";
+import { PROGRESS_RANGES, ProgressLegend } from "@/components/charts/ProgressChart";
 import { FriendButton } from "@/components/FriendButton";
 import { GameList } from "@/components/GameList";
 import { ProfileSkeleton, Skeleton } from "@/components/Skeleton";
-import { Card, EmptyState, ErrorNote, PageShell, RANGE_OPTIONS, Segmented } from "@/components/ui";
+import { Card, EmptyState, ErrorNote, PageShell, Segmented } from "@/components/ui";
 import { displayName } from "@/components/UserLink";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import { formatLocalDateTime, formatScore, signed } from "@/lib/format";
 import { CUSTOM_MODE, SOCIAL } from "@/lib/features";
 import { useMe } from "@/lib/hooks";
 import { describeSettings } from "@/lib/settings";
-import type { Activity, ConfigSummary, RangeKey, Series, Stats } from "@/lib/types";
+import type { Activity, ConfigSummary, ProgressRange, Series, Stats } from "@/lib/types";
 
 // Chart code loads after the page shell, so the profile header appears immediately.
 const ProgressChart = dynamic(() => import("@/components/charts/ProgressChart").then((m) => m.ProgressChart), {
@@ -41,7 +41,7 @@ function withHash(path: string, hash: string | null): string {
 }
 
 function Charts({ username, hash }: { username: string; hash: string | null }) {
-  const [range, setRange] = useState<RangeKey>("90d");
+  const [range, setRange] = useState<ProgressRange>("7d");
   const series = useQuery({
     queryKey: ["series", username, hash, range],
     queryFn: () => api<Series>(withHash(`/users/${username}/series?range=${range}`, hash)),
@@ -58,8 +58,8 @@ function Charts({ username, hash }: { username: string; hash: string | null }) {
         title="Progress"
         aside={
           <div className="flex flex-wrap items-center gap-3">
-            <ProgressLegend />
-            <Segmented label="Range" value={range} options={RANGE_OPTIONS} onChange={setRange} />
+            <ProgressLegend perGame={range === "7d"} />
+            <Segmented label="Range" value={range} options={PROGRESS_RANGES} onChange={setRange} />
           </div>
         }
       >

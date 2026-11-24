@@ -67,20 +67,24 @@ async def user_stats(
 @router.get("/{username}/series")
 async def user_series(
     username: str,
-    range: Literal["30d", "90d", "1y", "all"] = "90d",
+    range: Literal["7d", "30d", "90d", "1y"] = "7d",
     settings_hash: str | None = None,
     viewer: User | None = Depends(optional_user),
     session: AsyncSession = Depends(get_session),
 ):
+    """Progress over the last N days. The 7-day range has one point per game, at
+    the time it was played; longer ranges have one point per day."""
     target = await visible_target(session, viewer, username)
-    days = stats.RANGE_DAYS[range]
     today = today_in(target.timezone)
-    since = None if days is None else today - timedelta(days=days - 1)
-    points = await stats.daily_series(session, stats.game_filters(target.id, settings_hash), since)
+    since = today - timedelta(days=stats.RANGE_DAYS[range] - 1)
+    filters = stats.game_filters(target.id, settings_hash)
+    per_game = range == "7d"
+    points = await (stats.game_series if per_game else stats.daily_series)(session, filters, since)
     return {
         "range": range,
-        "from": since.isoformat() if since else (points[0]["date"] if points else today.isoformat()),
+        "from": since.isoformat(),
         "to": today.isoformat(),
+        "per": "game" if per_game else "day",
         "points": points,
     }
 

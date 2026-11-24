@@ -16,6 +16,12 @@ export function fromDayNumber(day: number): string {
   return new Date(day * DAY_MS).toISOString().slice(0, 10);
 }
 
+/** How far through its day a local time is: "2026-11-24T18:00:00" -> 0.75. */
+export function timeOfDayFraction(localDateTime: string): number {
+  const [hour, minute, second] = localDateTime.slice(11, 19).split(":").map(Number);
+  return (hour * 3600 + minute * 60 + (second || 0)) / 86_400;
+}
+
 /** 0 = Sunday ... 6 = Saturday. */
 export function weekday(localDate: string): number {
   return (((dayNumber(localDate) + 4) % 7) + 7) % 7; // 1970-01-01 was a Thursday

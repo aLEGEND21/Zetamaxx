@@ -113,11 +113,32 @@ async def test_series_range_keeps_rolling_history(client, make_user, clock):
     r = await client.get("/api/users/alice/series", params={"range": "30d"}, headers=auth(alice))
     # Only the recent day is in range, but its rolling mean still includes the old game.
     assert r.json()["points"] == [{"date": "2026-06-14", "best": 30, "avg": 30.0, "games": 1, "rolling_avg": 20.0}]
-    everything = await client.get("/api/users/alice/series", params={"range": "all"}, headers=auth(alice))
-    assert [p["date"] for p in everything.json()["points"]] == ["2026-01-05", "2026-06-14"]
-    assert everything.json()["from"] == "2026-01-05"
-    bad = await client.get("/api/users/alice/series", params={"range": "2w"}, headers=auth(alice))
-    assert bad.status_code == 422
+    assert r.json()["per"] == "day"
+    year = await client.get("/api/users/alice/series", params={"range": "1y"}, headers=auth(alice))
+    assert [p["date"] for p in year.json()["points"]] == ["2026-01-05", "2026-06-14"]
+    for unsupported in ("2w", "all"):
+        bad = await client.get("/api/users/alice/series", params={"range": unsupported}, headers=auth(alice))
+        assert bad.status_code == 422
+
+
+async def test_seven_day_series_has_one_point_per_game(client, make_user, clock):
+    alice = await make_user("alice", timezone="America/New_York")
+    await add_game(alice, 10, utc(2026, 6, 1, 15))  # before the window, but part of the rolling mean
+    await add_game(alice, 99, utc(2026, 6, 9, 3, 59))  # Jun 8, 11:59 PM in New York: one minute too early
+    await add_game(alice, 20, utc(2026, 6, 9, 4, 0))  # Jun 9, 12:00 AM: the first moment of the window
+    await add_game(alice, 30, utc(2026, 6, 14, 13, 5, 7))
+    await add_game(alice, 40, utc(2026, 6, 14, 13, 8))  # same day, three minutes later: its own point
+    await add_game(alice, 50, utc(2026, 6, 15, 1, 30))  # still Jun 14 in New York
+
+    # The default range is the last 7 days: today (Jun 15) and the six days before it.
+    body = (await client.get("/api/users/alice/series", headers=auth(alice))).json()
+    assert (body["range"], body["per"], body["from"], body["to"]) == ("7d", "game", "2026-06-09", "2026-06-15")
+    assert body["points"] == [
+        {"at": "2026-06-09T00:00:00", "score": 20, "rolling_avg": 43.0},  # (10 + 99 + 20) / 3
+        {"at": "2026-06-14T09:05:07", "score": 30, "rolling_avg": 39.75},
+        {"at": "2026-06-14T09:08:00", "score": 40, "rolling_avg": 39.8},
+        {"at": "2026-06-14T21:30:00", "score": 50, "rolling_avg": 41.5},
+    ]
 
 
 async def test_activity_has_365_distinct_days_across_dst(client, make_user, clock):
