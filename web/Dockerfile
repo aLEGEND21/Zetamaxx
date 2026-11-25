@@ -16,7 +16,8 @@ ENV API_URL=$API_URL \
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY \
     NEXT_TELEMETRY_DISABLED=1
 RUN test -n "$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY" || (echo "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY build argument is empty (in CI it comes from the repository secret of that name)" && exit 1)
-RUN npm run build
+# public/ is empty for now, so git does not carry it; the run stage copies it.
+RUN mkdir -p public && npm run build
 
 FROM node:26-alpine AS run
 WORKDIR /app
