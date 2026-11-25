@@ -49,7 +49,7 @@ test("sign in, play, see the game on the profile, and (when groups are on) compa
 
   // The game shows up on the player's profile.
   await one.page.goto(`/u/${one.username}`);
-  const pbTile = one.page.locator("div", { has: one.page.getByText("Personal best", { exact: true }) }).last();
+  const pbTile = one.page.locator("div", { has: one.page.getByText("Personal record", { exact: true }) }).last();
   await expect(pbTile).toContainText(String(scoreOne));
   const history = one.page.locator("section", { hasText: "Recent games" });
   await expect(history.getByRole("link").first()).toContainText(String(scoreOne));

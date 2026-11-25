@@ -4,7 +4,7 @@ export function Skeleton({ className = "" }: { className?: string }) {
   return <div aria-hidden="true" className={`animate-pulse rounded-lg bg-border/60 ${className}`} />;
 }
 
-const TILE_LABELS = ["Personal best", "Recent average", "Streak", "Improvement"];
+const TILE_LABELS = ["Personal record", "Recent average", "Streak", "Improvement"];
 
 /** Placeholder for the profile page, laid out like the page itself so nothing jumps when the data arrives. */
 export function ProfileSkeleton() {

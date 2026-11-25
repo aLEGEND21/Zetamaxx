@@ -8,7 +8,7 @@ function CrownIcon() {
   );
 }
 
-/** The pill that marks a personal best: "New PR" when it was just set, "Personal best" on a saved game. */
+/** The pill that marks a personal best: "New PR" when it was just set, "PR" on a saved game. */
 export function BestBadge({ children }: { children: string }) {
   return (
     <span

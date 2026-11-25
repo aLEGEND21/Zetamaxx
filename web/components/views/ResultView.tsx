@@ -45,12 +45,14 @@ export function ResultView() {
 
   // "Play again" takes focus once the results are on screen, so Enter starts the next game.
   const playAgain = useRef<HTMLAnchorElement>(null);
-  const loaded = game.isSuccess;
+  // A ranked game also waits for the player's stats, so the PR badge is there from the first paint
+  // instead of pushing the name down when it arrives.
+  const loaded = game.isSuccess && !stats.isLoading;
   useEffect(() => {
     if (loaded) playAgain.current?.focus();
   }, [loaded]);
 
-  if (game.isPending) return <PageSkeleton />;
+  if (game.isPending || stats.isLoading) return <PageSkeleton />;
   if (game.isError) {
     const status = game.error instanceof ApiError ? game.error.status : 0;
     if (status === 404) return <Message title="Game not found">This game doesn&apos;t exist, or was never saved</Message>;
@@ -68,8 +70,8 @@ export function ResultView() {
         problems={data.problems}
         settings={data.settings}
         status={
-          <span className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-            {isPb && <BestBadge>Personal best</BestBadge>}
+          <span className="flex flex-col items-center gap-2">
+            {isPb && <BestBadge>PR</BestBadge>}
             <span>
               <Link href={`/u/${data.user.username}`} className="text-text underline-offset-2 hover:underline">
                 {displayName(data.user)}

@@ -149,12 +149,12 @@ export function ProfileView() {
       <PageShell>
         {header}
         <div className="grid gap-4 sm:grid-cols-4">
-          <Tile label="Personal best" value={formatScore(base.pb)} />
+          <Tile label="Personal record" value={formatScore(base.pb)} />
         </div>
         <Card className="mt-4">
           <EmptyState>
             {!SOCIAL
-              ? "Only the personal best is public. The rest of a player's stats are private."
+              ? "Only the personal record is public. The rest of a player's stats are private."
               : isSignedIn
                 ? "Full stats are shared with friends and people in the same group."
                 : "Sign in to add this player as a friend. Full stats are shared with friends and group members."}
@@ -202,7 +202,7 @@ export function ProfileView() {
       ) : (
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <Tile label="Personal best" value={formatScore(stats.pb)} note={`${stats.games ?? 0} ${stats.games === 1 ? "game" : "games"}`} />
+            <Tile label="Personal record" value={formatScore(stats.pb)} note={`${stats.games ?? 0} ${stats.games === 1 ? "game" : "games"}`} />
             <Tile label="Recent average" value={formatScore(stats.recent_avg, 1)} note="last 10 games" />
             <Tile
               label="Streak"
