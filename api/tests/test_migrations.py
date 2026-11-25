@@ -7,7 +7,7 @@ from alembic import command
 from alembic.config import Config
 
 from app.config import get_settings
-from app.db import API_DIR
+from app.db import API_DIR, run_migrations
 
 
 def _config() -> Config:
@@ -60,6 +60,26 @@ def test_downgrade_to_base_and_back(tmp_path, monkeypatch):
         assert _tables(db) <= {"alembic_version"}
         command.upgrade(_config(), "head")
         assert "users" in _tables(db)
+    finally:
+        monkeypatch.undo()
+        get_settings.cache_clear()
+
+
+def test_rolled_back_release_starts_on_a_newer_database(tmp_path, monkeypatch):
+    """After a deploy is rolled back, the older code meets a database a newer release migrated."""
+    db = tmp_path / "newer.db"
+    monkeypatch.setenv("DATABASE_PATH", str(db))
+    get_settings.cache_clear()
+    try:
+        run_migrations()  # a new file is created and brought up to date as usual
+        assert "users" in _tables(db)
+        with sqlite3.connect(db) as conn:
+            conn.execute("UPDATE alembic_version SET version_num = '9999_from_a_newer_release'")
+        run_migrations()  # must neither fail nor touch the file
+        with sqlite3.connect(db) as conn:
+            assert conn.execute("SELECT version_num FROM alembic_version").fetchall() == [
+                ("9999_from_a_newer_release",)
+            ]
     finally:
         monkeypatch.undo()
         get_settings.cache_clear()
