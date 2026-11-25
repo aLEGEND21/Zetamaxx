@@ -265,7 +265,7 @@ export function Game() {
 
   return (
     <div className="relative mx-auto flex w-full max-w-content flex-1 flex-col px-4">
-      <div className="nums flex justify-between pt-2 text-sm text-muted">
+      <div className="nums flex justify-between pt-3.5 text-sm text-muted">
         <span aria-live="polite" data-testid="score">
           Score {view.score}
         </span>
