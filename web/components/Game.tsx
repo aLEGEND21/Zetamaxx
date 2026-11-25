@@ -13,7 +13,7 @@ import type { GameSettings } from "@/lib/settings";
 import { digitsOnly, displaySeconds } from "@/lib/timer";
 import { BestBadge } from "./BestBadge";
 import { Button } from "./Button";
-import { Results } from "./Results";
+import { FinalScore, ResultsDetails, ResultsMode } from "./Results";
 
 type SaveState = SaveOutcome | { state: "saving" } | { state: "local" } | { state: "empty" };
 
@@ -294,12 +294,23 @@ export function Game() {
         </span>
       </div>
 
-      <div className="flex flex-1 flex-col items-center justify-center pb-24 pt-8">
-        {active && (
-          <div className="flex w-full flex-col items-center gap-4">
+      {/* The problem and the final score share one line, a fixed share of the way down the screen, so
+          the score appears exactly where the problem was. Everything else hangs above or below that
+          line; both of those areas have a fixed size, and what is in them never moves it. */}
+      <section className="flex flex-1 flex-col items-center pt-8" aria-label={active ? undefined : "Results"}>
+        <div className="flex min-h-0 flex-[2] basis-0 flex-col justify-end pb-2">
+          {!active && (
+            <div className="fade-in">
+              <ResultsMode settings={view.settings} />
+            </div>
+          )}
+        </div>
+
+        <div className="flex h-16 shrink-0 items-center justify-center sm:h-20">
+          {active ? (
             <p
               key={view.index}
-              className={`nums min-h-[1.25em] text-[40px] leading-tight sm:text-[64px] ${view.index > 0 ? "correct-flash" : ""}`}
+              className={`nums text-[40px] leading-tight sm:text-[64px] ${view.index > 0 ? "correct-flash" : ""}`}
               data-testid="problem"
             >
               {view.phase === "starting" ? (
@@ -313,72 +324,78 @@ export function Game() {
                 view.display
               )}
             </p>
-            <input
-              ref={inputRef}
-              onInput={onInput}
-              onBlur={(event) => {
-                // Keep typing focus unless the player tabbed to Restart.
-                if (event.relatedTarget !== restartRef.current && engineRef.current) {
-                  requestAnimationFrame(() => engineRef.current && inputRef.current?.focus());
-                }
-              }}
-              autoFocus
-              inputMode="numeric"
-              pattern="[0-9]*"
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
-              aria-label="Answer"
-              data-testid="answer"
-              className="nums w-56 border-b border-border bg-transparent pb-1 text-center text-[40px] leading-tight outline-none focus:border-text focus-visible:outline-none sm:w-72 sm:text-[64px]"
-            />
-            <button
-              ref={restartRef}
-              type="button"
-              onClick={() => void start()}
-              aria-keyshortcuts="Escape"
-              className="mt-8 inline-flex items-center gap-2 rounded px-2 py-1 text-xs text-muted transition-colors hover:text-text"
-            >
-              Restart <kbd>Esc</kbd>
-            </button>
-          </div>
-        )}
+          ) : (
+            <FinalScore score={view.score} attempted={view.save.state !== "empty"} />
+          )}
+        </div>
 
-        {view.phase === "finished" && (
-          <Results
-            score={view.score}
-            attempted={view.save.state !== "empty"}
-            problems={view.problems}
-            settings={view.settings}
-            status={<SaveStatus save={view.save} />}
-            actions={
-              <>
-                <Button variant="primary" autoFocus onClick={() => void start()} aria-keyshortcuts="Enter" data-testid="play-again">
-                  Play again <EnterIcon />
-                </Button>
-                {CUSTOM_MODE && (
-                  // With no start screen, the mode for the next game is chosen here.
-                  <div className="flex rounded-lg border border-border bg-surface p-0.5 text-sm" role="group" aria-label="Mode for the next game">
-                    {(["standard", "custom"] as const).map((mode) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        aria-pressed={prefs.mode === mode}
-                        onClick={() => savePrefs({ ...prefs, mode })}
-                        className={`rounded-md px-3 py-1 capitalize transition-colors duration-150 ${
-                          prefs.mode === mode ? "bg-text text-surface" : "text-muted hover:text-text"
-                        }`}
-                      >
-                        {mode}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </>
-            }
-          />
-        )}
-      </div>
+        <div className="flex min-h-0 w-full flex-[5] basis-0 flex-col items-center">
+          {active ? (
+            <div className="flex flex-col items-center gap-4 pt-4">
+              <input
+                ref={inputRef}
+                onInput={onInput}
+                onBlur={(event) => {
+                  // Keep typing focus unless the player tabbed to Restart.
+                  if (event.relatedTarget !== restartRef.current && engineRef.current) {
+                    requestAnimationFrame(() => engineRef.current && inputRef.current?.focus());
+                  }
+                }}
+                autoFocus
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                aria-label="Answer"
+                data-testid="answer"
+                className="nums w-56 border-b border-border bg-transparent pb-1 text-center text-[40px] leading-tight outline-none focus:border-text focus-visible:outline-none sm:w-72 sm:text-[64px]"
+              />
+              <button
+                ref={restartRef}
+                type="button"
+                onClick={() => void start()}
+                aria-keyshortcuts="Escape"
+                className="mt-8 inline-flex items-center gap-2 rounded px-2 py-1 text-xs text-muted transition-colors hover:text-text"
+              >
+                Restart <kbd>Esc</kbd>
+              </button>
+            </div>
+          ) : (
+            <div className="fade-in w-full max-w-xl pb-10 pt-2">
+              <ResultsDetails
+                problems={view.problems}
+                status={<SaveStatus save={view.save} />}
+                actions={
+                  <>
+                    <Button variant="primary" autoFocus onClick={() => void start()} aria-keyshortcuts="Enter" data-testid="play-again">
+                      Play again <EnterIcon />
+                    </Button>
+                    {CUSTOM_MODE && (
+                      // With no start screen, the mode for the next game is chosen here.
+                      <div className="flex rounded-lg border border-border bg-surface p-0.5 text-sm" role="group" aria-label="Mode for the next game">
+                        {(["standard", "custom"] as const).map((mode) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            aria-pressed={prefs.mode === mode}
+                            onClick={() => savePrefs({ ...prefs, mode })}
+                            className={`rounded-md px-3 py-1 capitalize transition-colors duration-150 ${
+                              prefs.mode === mode ? "bg-text text-surface" : "text-muted hover:text-text"
+                            }`}
+                          >
+                            {mode}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                }
+              />
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
