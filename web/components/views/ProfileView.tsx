@@ -11,6 +11,7 @@ import { PROGRESS_RANGES, ProgressLegend } from "@/components/charts/ProgressCha
 import { FriendButton } from "@/components/FriendButton";
 import { GameList } from "@/components/GameList";
 import { ProfileSkeleton, Skeleton } from "@/components/Skeleton";
+import { TimezoneSelect } from "@/components/TimezoneSelect";
 import { Card, EmptyState, ErrorNote, PageShell, Segmented } from "@/components/ui";
 import { displayName } from "@/components/UserLink";
 import { ApiError, api, errorMessage } from "@/lib/api";
@@ -139,6 +140,7 @@ export function ProfileView() {
         </div>
       </div>
       {SOCIAL && !base.is_self && isSignedIn && me && <FriendButton username={user.username} />}
+      {base.is_self && me && <TimezoneSelect me={me} />}
     </div>
   );
 

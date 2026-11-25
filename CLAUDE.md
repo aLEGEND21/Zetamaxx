@@ -109,7 +109,9 @@ in CI, images shipped over SSH, then `scripts/deploy.sh` on the server starts th
   version differs from older ones (`web/AGENTS.md`).
 - The middleware file is `web/proxy.ts`. It redirects signed-out visitors away from `/friends` and
   `/groups`. Do not move that check into a layout: it breaks Next's development validation.
-  `/settings` is deliberately public, because guests can configure custom mode there.
+  `/settings` holds only the custom-mode form: public (guests can use it), and 404 while
+  `CUSTOM_MODE` is off. There is no general settings page: the timezone picker is on the player's
+  own profile, and account details are in Clerk's "Manage account" window under the avatar.
 - Cache Components is on. A route with a dynamic URL part is a server `page.tsx` that wraps a client
   view in `<Suspense>`; the view reads the parameter with `useParams()`.
 - After adding or removing a route, run `npx next typegen` in `web/` if `tsc` complains about

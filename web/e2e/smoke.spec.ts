@@ -11,7 +11,8 @@ async function signIn(browser: Browser, emailAddress: string): Promise<Player> {
   await page.goto("/");
   await clerk.signIn({ page, emailAddress });
   await page.reload();
-  await expect(page.getByRole("link", { name: "Profile" })).toBeVisible();
+  // The avatar menu only renders for a signed-in visitor.
+  await expect(page.locator(".cl-userButtonTrigger")).toBeVisible();
   const me = await page.evaluate(async () => (await fetch("/api/me")).json());
   return { page, username: me.username };
 }

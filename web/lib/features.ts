@@ -4,5 +4,5 @@
 /** Friends, groups and invite links: the nav links, their pages (404 while off) and the friend button. */
 export const SOCIAL = false as boolean;
 
-/** Custom (unranked) games: the mode picker on the results screen, the form in Settings and the Custom tab on profiles. */
+/** Custom (unranked) games: the mode picker on the results screen, its form at /settings (with the gear link in the header) and the Custom tab on profiles. */
 export const CUSTOM_MODE = false as boolean;

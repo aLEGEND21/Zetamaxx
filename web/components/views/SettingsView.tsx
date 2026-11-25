@@ -1,15 +1,9 @@
 "use client";
 
-import { Show, UserProfile } from "@clerk/nextjs";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 import { useState } from "react";
-import { Button, buttonClass } from "@/components/Button";
+import { Button } from "@/components/Button";
 import { useToast } from "@/components/Toasts";
 import { Card, PageShell, Segmented } from "@/components/ui";
-import { api, errorMessage } from "@/lib/api";
-import { CUSTOM_MODE } from "@/lib/features";
-import { useMe } from "@/lib/hooks";
 import { savePrefs, usePrefs } from "@/lib/prefs";
 import {
   DURATIONS,
@@ -25,7 +19,6 @@ import {
   type GameSettings,
   type Range,
 } from "@/lib/settings";
-import type { Me } from "@/lib/types";
 
 const INPUT = "h-9 rounded-lg border border-border bg-surface px-2 text-sm";
 
@@ -141,111 +134,15 @@ function CustomModeForm({ initial }: { initial: GameSettings }) {
   );
 }
 
-function allTimezones(): string[] {
-  try {
-    return Intl.supportedValuesOf("timeZone");
-  } catch {
-    return [];
-  }
-}
-
-function TimezoneForm({ me }: { me: Me }) {
-  const queryClient = useQueryClient();
-  const toast = useToast();
-  const [value, setValue] = useState(me.timezone);
-  const [zones] = useState(allTimezones);
-  const deviceZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const save = useMutation({
-    mutationFn: (timezone: string) => api<Me>("/me", { method: "PATCH", body: { timezone } }),
-    onSuccess: (updated) => {
-      queryClient.setQueryData(["me"], updated);
-      setValue(updated.timezone);
-      toast(`Timezone set to ${updated.timezone}.`);
-    },
-  });
-
-  return (
-    <form
-      className="space-y-3"
-      onSubmit={(event) => {
-        event.preventDefault();
-        save.mutate(value.trim());
-      }}
-    >
-      <div className="flex flex-wrap items-center gap-3">
-        <label htmlFor="timezone" className="sr-only">
-          Timezone
-        </label>
-        <input
-          id="timezone"
-          list="timezones"
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          placeholder="Search, e.g. America/Chicago"
-          autoComplete="off"
-          spellCheck={false}
-          className={`w-72 max-w-full ${INPUT}`}
-        />
-        <datalist id="timezones">
-          {zones.map((zone) => (
-            <option key={zone} value={zone} />
-          ))}
-        </datalist>
-        <Button type="submit" variant="primary" disabled={save.isPending || value.trim() === "" || value.trim() === me.timezone}>
-          Save
-        </Button>
-        {deviceZone !== me.timezone && (
-          <Button variant="ghost" disabled={save.isPending} onClick={() => save.mutate(deviceZone)}>
-            Use this device&apos;s ({deviceZone})
-          </Button>
-        )}
-      </div>
-      {save.isError && (
-        <p className="text-sm text-danger" role="alert">
-          {errorMessage(save.error)}
-        </p>
-      )}
-      <p className="text-xs text-muted">
-        Decides which day a game counts for (streaks, charts, time of day). Changes apply to future games only; past games
-        keep the date they were played on.
-      </p>
-    </form>
-  );
-}
-
+/** Only reachable while CUSTOM_MODE is on (proxy.ts answers 404 otherwise). Guests can use it too. */
 export function SettingsView() {
   const prefs = usePrefs();
-  const { me } = useMe();
   return (
-    <PageShell title="Settings">
-      <div className="space-y-4">
-        {CUSTOM_MODE && (
-          <Card title="Custom mode">
-            {/* Remounts when the stored settings load or change in another tab. */}
-            <CustomModeForm key={JSON.stringify(prefs.custom)} initial={prefs.custom} />
-          </Card>
-        )}
-
-        <Show when="signed-in">
-          <Card title="Timezone">{me ? <TimezoneForm key={me.timezone} me={me} /> : <div className="h-9" />}</Card>
-          <Card title="Account">
-            <p className="mb-4 text-xs text-muted">
-              Username, profile picture, email and connected accounts. Changes can take a few minutes to show up here.
-            </p>
-            <div className="overflow-x-auto">
-              <UserProfile routing="hash" />
-            </div>
-          </Card>
-        </Show>
-        <Show when="signed-out">
-          <Card title="Account">
-            <p className="text-sm text-muted">Sign in to save scores, track progress, and set your timezone.</p>
-            <Link href="/sign-in" className={buttonClass("primary", "mt-4")}>
-              Sign in
-            </Link>
-          </Card>
-        </Show>
-      </div>
+    <PageShell title="Custom mode">
+      <Card>
+        {/* Remounts when the stored settings load or change in another tab. */}
+        <CustomModeForm key={JSON.stringify(prefs.custom)} initial={prefs.custom} />
+      </Card>
     </PageShell>
   );
 }

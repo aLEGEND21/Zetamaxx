@@ -5,14 +5,15 @@
 // the security boundary: these pages contain no data of their own, and every
 // API call is verified by FastAPI (api/app/auth.py).
 //
-// While friends and groups are switched off (lib/features.ts), their pages
-// answer 404 instead.
+// While a feature is switched off (lib/features.ts), its pages answer 404:
+// friends and groups, and /settings, which holds only the custom-mode form.
 import { clerkMiddleware } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { SOCIAL } from "@/lib/features";
+import { CUSTOM_MODE, SOCIAL } from "@/lib/features";
 
 const SIGNED_IN_ONLY = ["/friends", "/groups"];
 const SOCIAL_PAGES = ["/friends", "/groups", "/join"];
+const CUSTOM_MODE_PAGES = ["/settings"];
 
 function under(paths: string[], pathname: string): boolean {
   return paths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
@@ -20,7 +21,7 @@ function under(paths: string[], pathname: string): boolean {
 
 export default clerkMiddleware(async (auth, request) => {
   const { pathname } = request.nextUrl;
-  if (!SOCIAL && under(SOCIAL_PAGES, pathname)) {
+  if ((!SOCIAL && under(SOCIAL_PAGES, pathname)) || (!CUSTOM_MODE && under(CUSTOM_MODE_PAGES, pathname))) {
     // No route is called /404, so this renders the normal "not found" page with a 404 status.
     return NextResponse.rewrite(new URL("/404", request.url));
   }
