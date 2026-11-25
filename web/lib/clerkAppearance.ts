@@ -41,7 +41,7 @@ export const clerkAppearance = {
 };
 
 /**
- * The header's account button: avatar, @username and a chevron, so it reads as a menu.
+ * The header's account button: avatar, username and a chevron, so it reads as a menu.
  * Clerk renders only the avatar inside its button, so the other two are drawn with
  * pseudo-elements. Usernames are [a-z0-9_] only, which is safe inside a CSS string.
  */
@@ -50,8 +50,9 @@ export function accountButtonAppearance(username: string | undefined) {
     elements: {
       userButtonTrigger: {
         gap: "8px",
-        height: "36px",
-        padding: "0 8px",
+        // 28px avatar with 8px around it on the top, left and bottom; a little more past the chevron.
+        height: "44px",
+        padding: "0 10px 0 8px",
         borderRadius: "8px",
         background: "transparent",
         color: "var(--text)",
@@ -59,7 +60,7 @@ export function accountButtonAppearance(username: string | undefined) {
         fontWeight: 500,
         // No outline at rest; a faint fill shows it is a button on hover and while the menu is open.
         "&:hover, &[aria-expanded='true']": { background: "rgba(0, 0, 0, 0.05)" },
-        "&::before": username ? { content: `"@${username}"`, order: 1 } : { content: "none" },
+        "&::before": username ? { content: `"${username}"`, order: 1 } : { content: "none" },
         "&::after": {
           content: '""',
           order: 2,

@@ -31,7 +31,7 @@ function PersonIcon() {
 /** Stands in for the account button while Clerk or the player's details are loading; same box, so nothing jumps. */
 function AccountButtonSkeleton() {
   return (
-    <span aria-hidden="true" className="flex h-9 items-center gap-2 px-2">
+    <span aria-hidden="true" className="flex h-11 items-center gap-2 pl-2 pr-2.5">
       <span className="h-7 w-7 animate-pulse rounded-full bg-border/60" />
       <span className="h-3 w-20 animate-pulse rounded bg-border/60" />
     </span>
@@ -91,7 +91,7 @@ export function Header() {
             </Link>
           )}
           <Show when="signed-in">
-            <span className="ml-1.5 flex h-9 items-center">
+            <span className="ml-1.5 flex h-11 items-center">
               {/* The avatar menu is the signed-in navigation: profile, account, sign out. */}
               {me ? (
                 <UserButton appearance={accountButtonAppearance(me.username)} fallback={<AccountButtonSkeleton />}>
@@ -108,7 +108,7 @@ export function Header() {
           </Show>
           {/* Until Clerk has loaded, nobody knows whether the visitor is signed in. */}
           <ClerkLoading>
-            <span className="ml-1.5 flex h-9 items-center">
+            <span className="ml-1.5 flex h-11 items-center">
               <AccountButtonSkeleton />
             </span>
           </ClerkLoading>
