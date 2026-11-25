@@ -384,6 +384,51 @@ async def test_history_is_paginated_newest_first(client, make_user):
     assert "problems" not in first["items"][0]
 
 
+async def test_history_sort_orders(client, make_user):
+    alice = await make_user("alice")
+    # Scores repeat, so every score order has ties, which come newest first.
+    scores = [12, 30, 12, 7, 30, 21, 7, 30]
+    games = [await add_game(alice, score, utc(2026, 6, 1, 12) + timedelta(hours=i)) for i, score in enumerate(scores)]
+    played = list(range(len(games)))  # indexes in the order played
+    expected = {
+        "newest": played[::-1],
+        "oldest": played,
+        "score_desc": sorted(played, key=lambda i: (-scores[i], -i)),
+        "score_asc": sorted(played, key=lambda i: (scores[i], -i)),
+    }
+    for sort, order in expected.items():
+        # Three per page, so page boundaries land inside runs of equal scores.
+        seen, cursor = [], None
+        while True:
+            params = {"sort": sort, "limit": 3} | ({"cursor": cursor} if cursor else {})
+            page = (await client.get("/api/games", params=params, headers=auth(alice))).json()
+            seen += [g["id"] for g in page["items"]]
+            cursor = page["next_cursor"]
+            if cursor is None:
+                break
+        assert seen == [games[i].id for i in order], sort
+
+    default = (await client.get("/api/games", headers=auth(alice))).json()
+    assert [g["id"] for g in default["items"]] == [g.id for g in games[::-1]]
+
+
+async def test_history_sort_rejects_bad_input(client, make_user):
+    alice = await make_user("alice")
+    for i in range(3):
+        await add_game(alice, 10 + i, utc(2026, 6, 1, 12) + timedelta(hours=i))
+    unknown = await client.get("/api/games", params={"sort": "fastest"}, headers=auth(alice))
+    assert (unknown.status_code, unknown.json()["error"]["code"]) == (422, "validation_error")
+
+    # A cursor only works with the sort order that issued it.
+    by_time = (await client.get("/api/games", params={"limit": 1}, headers=auth(alice))).json()["next_cursor"]
+    by_score = (await client.get("/api/games", params={"limit": 1, "sort": "score_asc"}, headers=auth(alice))).json()[
+        "next_cursor"
+    ]
+    for sort, cursor in (("score_desc", by_time), ("newest", by_score), ("oldest", by_score)):
+        r = await client.get("/api/games", params={"sort": sort, "cursor": cursor}, headers=auth(alice))
+        assert (r.status_code, r.json()["error"]["code"]) == (422, "invalid_cursor"), sort
+
+
 async def test_history_filters(client, make_user):
     alice = await make_user("alice")
     await add_game(alice, 30, utc(2026, 6, 1, 12))

@@ -1,6 +1,6 @@
 "use client";
 
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { api, errorMessage } from "@/lib/api";
@@ -14,14 +14,15 @@ import { EmptyState, ErrorNote } from "./ui";
 import { displayName } from "./UserLink";
 
 type Props = {
-  /** API path including any filters, e.g. "/games?user=ada&ranked=true". */
+  /** API path including any filters and sort order, e.g. "/games?user=ada&ranked=true&sort=oldest". */
   path: string;
   /** Feeds show who played; a single player's history does not. */
   showUser?: boolean;
   empty: ReactNode;
 };
 
-/** A paginated list of games, newest first. Each row opens that game's results. */
+/** A paginated list of games, in the order the API returns them (newest first unless the path
+ *  asks otherwise). Each row opens that game's results. */
 export function GameList({ path, showUser = false, empty }: Props) {
   const query = useInfiniteQuery({
     queryKey: ["games", path],
@@ -29,6 +30,8 @@ export function GameList({ path, showUser = false, empty }: Props) {
       api<Page<GameSummary>>(pageParam ? `${path}${path.includes("?") ? "&" : "?"}cursor=${encodeURIComponent(pageParam)}` : path),
     initialPageParam: "",
     getNextPageParam: (last) => last.next_cursor ?? undefined,
+    // When the path changes (a new sort order), the old rows stay up until the new ones arrive.
+    placeholderData: keepPreviousData,
   });
 
   if (query.isPending) {
@@ -47,7 +50,7 @@ export function GameList({ path, showUser = false, empty }: Props) {
 
   return (
     <>
-      <ul className="divide-y divide-border">
+      <ul className={`divide-y divide-border transition-opacity duration-150 ${query.isPlaceholderData ? "opacity-60" : ""}`}>
         {games.map((game) => (
           <li key={game.id}>
             <Link
@@ -67,7 +70,7 @@ export function GameList({ path, showUser = false, empty }: Props) {
           </li>
         ))}
       </ul>
-      {query.hasNextPage && (
+      {query.hasNextPage && !query.isPlaceholderData && (
         <div className="mt-3 flex justify-center">
           <Button variant="ghost" onClick={() => query.fetchNextPage()} disabled={query.isFetchingNextPage}>
             {query.isFetchingNextPage ? "Loading…" : "Load more"}

@@ -25,6 +25,9 @@ export type GameDetail = GameSummary & { problems: SolvedProblem[] };
 
 export type Page<T> = { items: T[]; next_cursor: string | null };
 
+/** The `sort` parameter of `/games`. Games with the same score come newest first. */
+export type GameSort = "newest" | "oldest" | "score_desc" | "score_asc";
+
 /** Strangers only get `user.username` and `pb`; everything else needs `visible`. */
 export type Stats = {
   user: UserBrief;

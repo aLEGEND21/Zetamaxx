@@ -1,5 +1,6 @@
 import secrets
 from datetime import UTC, datetime, timedelta
+from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import and_, delete, func, or_, select
@@ -32,6 +33,9 @@ CLAIM_WINDOW = timedelta(minutes=15)  # a guest has this long to sign in and cla
 # Past this age an unused start can be neither finished nor claimed.
 STALE_START_AGE = CLAIM_WINDOW + timedelta(minutes=1)
 PAGE_SIZE = 20
+
+GameSort = Literal["newest", "oldest", "score_desc", "score_asc"]
+SCORE_SORTS = ("score_desc", "score_asc")
 
 
 async def prune_stale_starts(session: AsyncSession, now: datetime) -> None:
@@ -181,32 +185,56 @@ async def claim_game(body: ClaimIn, user: User = Depends(require_user), session:
     return await _save_game(session, start, user, result, finished_at=start.guest_finished_at)
 
 
-def _encode_cursor(game: Game) -> str:
-    return f"{game.finished_at.strftime(ISO_FORMAT)}~{game.id}"
+def _encode_cursor(game: Game, sort: GameSort) -> str:
+    stamp = f"{game.finished_at.strftime(ISO_FORMAT)}~{game.id}"
+    return f"{game.score}~{stamp}" if sort in SCORE_SORTS else stamp
 
 
-def _decode_cursor(cursor: str) -> tuple[datetime, str]:
+def _decode_cursor(cursor: str, sort: GameSort) -> tuple[int, datetime, str]:
+    """(score, finished_at, id) of the last game on the previous page. The score is 0
+    unless sorting by score. A cursor from a different sort order is rejected."""
     try:
+        score = 0
+        if sort in SCORE_SORTS:
+            head, cursor = cursor.split("~", 1)
+            score = int(head)
         stamp, game_id = cursor.split("~", 1)
-        return datetime.strptime(stamp, ISO_FORMAT).replace(tzinfo=UTC), game_id
+        return score, datetime.strptime(stamp, ISO_FORMAT).replace(tzinfo=UTC), game_id
     except ValueError as exc:
         raise APIError(422, "invalid_cursor", "Invalid cursor") from exc
 
 
-def page_query(query, cursor: str | None, limit: int):
-    """Newest first, keyset-paginated on (finished_at, id)."""
+def page_query(query, cursor: str | None, limit: int, sort: GameSort = "newest"):
+    """Keyset-paginated. By time the key is (finished_at, id). By score it is
+    (score, finished_at, id), so games with the same score come newest first."""
+    oldest_first = sort == "oldest"
+    if oldest_first:
+        order = [Game.finished_at.asc(), Game.id.asc()]
+    else:
+        order = [Game.finished_at.desc(), Game.id.desc()]
+    if sort in SCORE_SORTS:
+        order.insert(0, Game.score.desc() if sort == "score_desc" else Game.score.asc())
+
     if cursor:
-        stamp, game_id = _decode_cursor(cursor)
-        query = query.where(or_(Game.finished_at < stamp, and_(Game.finished_at == stamp, Game.id < game_id)))
-    return query.order_by(Game.finished_at.desc(), Game.id.desc()).limit(limit + 1)
+        score, stamp, game_id = _decode_cursor(cursor, sort)
+        if oldest_first:
+            after = or_(Game.finished_at > stamp, and_(Game.finished_at == stamp, Game.id > game_id))
+        else:
+            after = or_(Game.finished_at < stamp, and_(Game.finished_at == stamp, Game.id < game_id))
+        if sort == "score_desc":
+            after = or_(Game.score < score, and_(Game.score == score, after))
+        elif sort == "score_asc":
+            after = or_(Game.score > score, and_(Game.score == score, after))
+        query = query.where(after)
+    return query.order_by(*order).limit(limit + 1)
 
 
-def to_page(games: list[Game], limit: int) -> GamePage:
+def to_page(games: list[Game], limit: int, sort: GameSort = "newest") -> GamePage:
     has_more = len(games) > limit
     games = games[:limit]
     return GamePage(
         items=[GameSummary.of(g) for g in games],
-        next_cursor=_encode_cursor(games[-1]) if has_more else None,
+        next_cursor=_encode_cursor(games[-1], sort) if has_more else None,
     )
 
 
@@ -215,6 +243,7 @@ async def list_games(
     user: str | None = Query(None, description="username; defaults to the signed-in user"),
     ranked: bool | None = None,
     settings_hash: str | None = None,
+    sort: GameSort = "newest",
     cursor: str | None = None,
     limit: int = Query(PAGE_SIZE, ge=1, le=100),
     viewer: User | None = Depends(optional_user),
@@ -236,8 +265,8 @@ async def list_games(
         query = query.where(Game.is_ranked.is_(ranked))
     if settings_hash is not None:
         query = query.where(Game.settings_hash == settings_hash)
-    games = (await session.execute(page_query(query, cursor, limit))).scalars().all()
-    return to_page(list(games), limit)
+    games = (await session.execute(page_query(query, cursor, limit, sort))).scalars().all()
+    return to_page(list(games), limit, sort)
 
 
 @router.get("/{game_id}", response_model=GameDetail)

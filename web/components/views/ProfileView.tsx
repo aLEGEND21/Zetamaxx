@@ -4,7 +4,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { Heatmap } from "@/components/charts/Heatmap";
 import { PROGRESS_RANGES, ProgressLegend } from "@/components/charts/ProgressChart";
@@ -19,7 +19,7 @@ import { formatLocalDateTime, formatScore, signed } from "@/lib/format";
 import { CUSTOM_MODE, SOCIAL } from "@/lib/features";
 import { useMe } from "@/lib/hooks";
 import { describeSettings } from "@/lib/settings";
-import type { Activity, ConfigSummary, ProgressRange, Series, Stats } from "@/lib/types";
+import type { Activity, ConfigSummary, GameSort, ProgressRange, Series, Stats } from "@/lib/types";
 
 // Chart code loads after the page shell, so the profile header appears immediately.
 const ProgressChart = dynamic(() => import("@/components/charts/ProgressChart").then((m) => m.ProgressChart), {
@@ -87,6 +87,39 @@ function Charts({ username, hash }: { username: string; hash: string | null }) {
         )}
       </Card>
     </>
+  );
+}
+
+const SORT_OPTIONS: readonly { value: GameSort; label: string }[] = [
+  { value: "newest", label: "Newest first" },
+  { value: "oldest", label: "Oldest first" },
+  { value: "score_desc", label: "Highest score" },
+  { value: "score_asc", label: "Lowest score" },
+];
+
+function RecentGames({ username, hash }: { username: string; hash: string | null }) {
+  const [sort, setSort] = useState<GameSort>("newest");
+  const filter = hash ? `settings_hash=${hash}` : "ranked=true";
+  return (
+    <Card
+      title="Recent games"
+      aside={
+        <select
+          aria-label="Sort games"
+          value={sort}
+          onChange={(event) => setSort(event.target.value as GameSort)}
+          className="h-8 rounded-lg border border-border bg-surface px-2 text-xs"
+        >
+          {SORT_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      }
+    >
+      <GameList path={`/games?user=${username}&${filter}&sort=${sort}`} empty="No games yet" />
+    </Card>
   );
 }
 
@@ -233,15 +266,11 @@ export function ProfileView() {
               </EmptyState>
             </Card>
           ) : (
-            <>
-              <Charts key={hash ?? "ranked"} username={user.username} hash={hash} />
-              <Card title="Recent games">
-                <GameList
-                  path={hash ? `/games?user=${user.username}&settings_hash=${hash}` : `/games?user=${user.username}&ranked=true`}
-                  empty="No games yet"
-                />
-              </Card>
-            </>
+            // Keyed, so switching configuration resets the chart range and the sort order.
+            <Fragment key={hash ?? "ranked"}>
+              <Charts username={user.username} hash={hash} />
+              <RecentGames username={user.username} hash={hash} />
+            </Fragment>
           )}
         </div>
       )}
