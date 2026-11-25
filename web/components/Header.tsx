@@ -31,7 +31,7 @@ function PersonIcon() {
 /** Stands in for the account button while Clerk or the player's details are loading; same box, so nothing jumps. */
 function AccountButtonSkeleton() {
   return (
-    <span aria-hidden="true" className="flex h-9 items-center gap-2 rounded-lg border border-border bg-surface pl-1 pr-2.5">
+    <span aria-hidden="true" className="flex h-9 items-center gap-2 px-2">
       <span className="h-7 w-7 animate-pulse rounded-full bg-border/60" />
       <span className="h-3 w-20 animate-pulse rounded bg-border/60" />
     </span>
