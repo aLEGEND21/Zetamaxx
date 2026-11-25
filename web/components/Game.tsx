@@ -34,6 +34,27 @@ type View = {
   save: SaveState;
 };
 
+/** The Enter key's symbol, as a hint that Enter plays again. */
+function EnterIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="opacity-70"
+    >
+      <path d="M13 3.5v4a2 2 0 0 1-2 2H3.5" />
+      <path d="M6 7 3.5 9.5 6 12" />
+    </svg>
+  );
+}
+
 function startingView(settings: GameSettings): View {
   return {
     phase: "starting",
@@ -332,8 +353,8 @@ export function Game() {
             status={<SaveStatus save={view.save} />}
             actions={
               <>
-                <Button variant="primary" autoFocus onClick={() => void start()} data-testid="play-again">
-                  Play again <span className="nums text-xs opacity-70">Enter</span>
+                <Button variant="primary" autoFocus onClick={() => void start()} aria-keyshortcuts="Enter" data-testid="play-again">
+                  Play again <EnterIcon />
                 </Button>
                 {CUSTOM_MODE && (
                   // With no start screen, the mode for the next game is chosen here.
