@@ -27,7 +27,7 @@ export function Results({ score, attempted = true, problems, settings, status, a
         <p className="nums text-7xl font-medium leading-none" data-testid="final-score">
           {attempted ? score : <abbr title="Did not finish" className="no-underline">DNF</abbr>}
         </p>
-        <div className="min-h-6 text-sm text-muted" aria-live="polite">
+        <div className="flex min-h-7 items-center justify-center text-sm text-muted" aria-live="polite">
           {status}
         </div>
       </div>
