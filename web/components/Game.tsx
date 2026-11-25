@@ -282,7 +282,16 @@ export function Game() {
               className={`nums min-h-[1.25em] text-[40px] leading-tight sm:text-[64px] ${view.index > 0 ? "correct-flash" : ""}`}
               data-testid="problem"
             >
-              {view.display}
+              {view.phase === "starting" ? (
+                // Waiting for the server's seed: a placeholder the size of a problem, so nothing jumps.
+                <span
+                  aria-hidden="true"
+                  data-testid="problem-skeleton"
+                  className="inline-block h-[0.8em] w-[4.2em] animate-pulse rounded-lg bg-border/60 align-middle"
+                />
+              ) : (
+                view.display
+              )}
             </p>
             <input
               ref={inputRef}
