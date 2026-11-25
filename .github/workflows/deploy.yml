@@ -1,0 +1,80 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+# Never run two deploys at once; queue instead.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # A failing test stops the deploy before anything is built or shipped.
+      # uv installs the Python version named in api/.python-version.
+      - uses: astral-sh/setup-uv@v10.4.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: api/uv.lock
+
+      - name: Backend tests
+        working-directory: api
+        run: |
+          uv sync --frozen
+          uv run pytest -q
+
+      # Same Node as the web image.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Frontend tests
+        working-directory: web
+        run: |
+          npm ci
+          npm test
+
+      - name: Compute image tag
+        run: echo "TAG=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+
+      # Two values are fixed into the web image when it is built: where /api is
+      # forwarded (the api container's name on the server) and Clerk's
+      # publishable key, which ships to every browser.
+      - name: Build images
+        env:
+          CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+        run: |
+          docker build -t "zetamaxx-api:$TAG" ./api
+          docker build -t "zetamaxx-web:$TAG" \
+            --build-arg API_URL=http://zetamaxx-api:8000 \
+            --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="$CLERK_PUBLISHABLE_KEY" \
+            ./web
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          {
+            echo "Host vps"
+            echo "  HostName ${{ secrets.DEPLOY_HOST }}"
+            echo "  User ${{ secrets.DEPLOY_USER }}"
+            echo "  IdentityFile ~/.ssh/id_deploy"
+            echo "  StrictHostKeyChecking accept-new"
+          } > ~/.ssh/config
+
+      - name: Ship images to VPS
+        run: docker save "zetamaxx-api:$TAG" "zetamaxx-web:$TAG" | gzip | ssh vps 'gunzip | docker load'
+
+      - name: Deploy
+        run: |
+          ssh vps 'mkdir -p /opt/zetamaxx'
+          scp docker-compose.yml scripts/deploy.sh scripts/rollback.sh scripts/backup.sh vps:/opt/zetamaxx/
+          ssh vps "bash /opt/zetamaxx/deploy.sh $TAG"

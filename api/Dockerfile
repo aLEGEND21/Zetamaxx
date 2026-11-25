@@ -1,4 +1,4 @@
-# FastAPI + SQLite. Built on the server by `docker compose up -d --build`.
+# FastAPI + SQLite. Built in CI (.github/workflows/deploy.yml) and shipped to the server.
 FROM python:3.15-slim
 
 # uv installs the locked dependencies; the pinned image keeps builds repeatable.

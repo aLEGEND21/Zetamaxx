@@ -1,40 +1,49 @@
 # Production only. Development runs without Docker: see README ("Run it locally").
 #
-#   host 127.0.0.1:${APP_PORT}  ->  web (Next.js)  --/api/*-->  api (FastAPI)  ->  /data (named volume)
+# Driven by scripts/deploy.sh on the VPS with TAG set to the release image tag.
+# Images are built in CI and shipped to the VPS; nothing builds here.
 #
-# The server's own nginx forwards the subdomain to 127.0.0.1:${APP_PORT} and
-# handles TLS. Nothing here binds ports 80 or 443.
-
+# nginx (running in its own container) reaches the web app by name over the
+# external nginx-proxy network: proxy_pass http://zetamaxx-web:3000. Nothing
+# here publishes a port on the host.
 services:
-  api:
-    build: ./api
+  zetamaxx-api:
+    image: zetamaxx-api:${TAG}
+    container_name: zetamaxx-api
     restart: unless-stopped
+    # CLERK_SECRET_KEY and ALLOWED_ORIGINS. Lives on the VPS only, never in the
+    # repo; see .env.example. deploy.sh refuses to run until the file exists.
+    env_file:
+      - /opt/zetamaxx/.env
     environment:
       DATABASE_PATH: /data/zetamaxx.db
-      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:?set CLERK_SECRET_KEY in .env}
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?set ALLOWED_ORIGINS in .env, e.g. https://zetamaxx.arnavm.com}
     volumes:
       # The database lives here. Only this container mounts it: SQLite must have one writer.
       - zetamaxx-data:/data
-    # No ports: reachable only from `web` over the compose network.
+    networks:
+      - internal
 
-  web:
-    build:
-      context: ./web
-      args:
-        API_URL: http://api:8000
-        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:?set NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY in .env}
+  zetamaxx-web:
+    image: zetamaxx-web:${TAG}
+    container_name: zetamaxx-web
     restart: unless-stopped
-    environment:
-      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:?set CLERK_SECRET_KEY in .env}
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+    # CLERK_SECRET_KEY, for the sign-in checks Next.js does on the server.
+    env_file:
+      - /opt/zetamaxx/.env
+    # /api is forwarded to the api container by a rewrite fixed into the image
+    # when it is built (see the Build images step in .github/workflows/deploy.yml).
     depends_on:
-      api:
-        condition: service_healthy
-    ports:
-      # The app's only contract with the outside: one HTTP port, on localhost only.
-      - "127.0.0.1:${APP_PORT:-3100}:3000"
+      - zetamaxx-api
+    networks:
+      - internal
+      - nginx-proxy
+
+networks:
+  internal:
+  nginx-proxy:
+    external: true
 
 volumes:
+  # Survives rebuilds and restarts. Deleting this volume deletes the data.
   zetamaxx-data:
     name: zetamaxx-data

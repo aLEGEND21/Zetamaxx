@@ -16,7 +16,8 @@ this file covers what to know before changing the code.
 
 Single test: `cd api && uv run pytest tests/test_games.py -k name` or `cd web && npx vitest run tests/generator.test.ts`.
 
-Run `make lint` and `make test` before calling a change done.
+Run `make lint` and `make test` before calling a change done. CI runs both test suites on every
+push to `main`, and a failure blocks the deploy.
 
 ## Layout
 
@@ -30,6 +31,8 @@ Run `make lint` and `make test` before calling a change done.
   - `lib/`: `prng`, `generator`, `engine`, `timer` (game logic), `api` (fetch wrapper), `pending`
     (queued saves and guest claims), `dates`, `types` (API response shapes)
 - `shared/fixtures/problems.json`: the generator contract between the two apps (see below).
+- `.github/workflows/deploy.yml`, `docker-compose.yml`, `scripts/{deploy,rollback,backup}.sh`:
+  the deploy pipeline. The three scripts run on the server, from `/opt/zetamaxx`.
 - `data/zetamaxx.db`: dev database, gitignored. `.env` at the repo root is read by both apps.
 
 The browser only talks to the web app; `next.config.ts` rewrites `/api/*` to FastAPI, so there is
@@ -75,6 +78,10 @@ shares a group with you see everything. Everyone else gets username and personal
 - SQLite with one writer: uvicorn always runs with exactly one worker, in dev and in Docker.
 - Keep SQL portable (SQLAlchemy only, nothing SQLite-specific) so a move to Postgres stays possible.
 - Schema changes go through a new Alembic migration (batch mode). Migrations run on API startup.
+- **Migrations are additive only**: new tables, new nullable or defaulted columns, indexes. No drops
+  or renames. A failed deploy restarts the previous release on the already-migrated database, and
+  that older code must still work with it. (`run_migrations` leaves a database alone when it is
+  stamped with a migration the running code does not know.)
 
 **API conventions:**
 - Errors are `{"error": {"code", "message"}}`.
@@ -83,9 +90,18 @@ shares a group with you see everything. Everyone else gets username and personal
 
 **Secrets:** the Clerk keys live only in `.env`. Never commit it, and never print its contents.
 
-**Deployment:** only `web` publishes a port, on `127.0.0.1:${APP_PORT}`. Never bind 80 or 443; an
-nginx outside this project handles TLS. Only the `api` container mounts the data volume. The Docker
-images are built on the server, not on the dev Mac.
+**Deployment:** every push to `main` deploys (`.github/workflows/deploy.yml`): tests, image builds
+in CI, images shipped over SSH, then `scripts/deploy.sh` on the server starts them, health-checks
+`/api/health` through the web container and restarts the previous release if that fails.
+- Docker is for production only; development never uses it. `docker-compose.yml` is the production
+  stack and publishes no host ports. An nginx container outside this
+  project handles TLS and reaches `zetamaxx-web` over the external `nginx-proxy` network. Never
+  bind 80 or 443.
+- Only the `zetamaxx-api` container mounts the data volume.
+- Secrets live in `/opt/zetamaxx/.env` on the server. The Clerk publishable key is a GitHub
+  repository secret, fixed into the web image at build time. `.env.production` at the repo
+  root (gitignored) is the owner's local copy of those production values; no code reads it, and
+  like `.env` it must never be printed or committed.
 
 ## Next.js 16 notes
 

@@ -1,4 +1,4 @@
-# Next.js standalone server. Built on the server by `docker compose up -d --build`.
+# Next.js standalone server. Built in CI (.github/workflows/deploy.yml) and shipped to the server.
 FROM node:26-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -15,7 +15,7 @@ ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ENV API_URL=$API_URL \
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY \
     NEXT_TELEMETRY_DISABLED=1
-RUN test -n "$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY" || (echo "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is not set in .env" && exit 1)
+RUN test -n "$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY" || (echo "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY build argument is empty (in CI it comes from the repository secret of that name)" && exit 1)
 RUN npm run build
 
 FROM node:26-alpine AS run

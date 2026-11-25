@@ -88,59 +88,65 @@ also makes **your** account their friend and adds it to both groups: sign in onc
 
 ## Deploy
 
-The target is a Linux server that already runs Docker and has its own nginx handling TLS and
-domains. This project publishes exactly one HTTP port, on localhost only, and never binds 80 or 443.
+Docker is used in production only; development runs without it (see "Run it locally").
+
+Every push to `main` deploys. GitHub Actions (`.github/workflows/deploy.yml`) runs both test
+suites, builds the two Docker images, copies them to the server over SSH and starts them. Nothing
+is built on the server, and no image registry is involved.
 
 ```
-host 127.0.0.1:${APP_PORT}  ->  web (Next.js)  --/api/*-->  api (FastAPI, 1 worker)  ->  volume zetamaxx-data
+push to main -> tests -> build images -> ship over SSH -> deploy.sh: start, health check, roll back if unhealthy
+
+nginx container --(nginx-proxy network)--> zetamaxx-web (Next.js) --/api/*--> zetamaxx-api (FastAPI, 1 worker) -> volume zetamaxx-data
 ```
 
-### 1. Clerk production instance
+The server is a Linux machine that runs Docker and an nginx container which handles TLS and
+domains. This project publishes no ports on the host: nginx reaches the web container by name over
+the shared `nginx-proxy` Docker network.
 
-In the Clerk dashboard create the **production** instance for your domain (for example
-`zetamaxx.arnavm.com`) and add the DNS records it asks for. Apply the same sign-in settings as in
-development. For Google sign-in, create a Web application OAuth client in Google Cloud Console,
-paste Clerk's Authorized Redirect URI into it, enter the client ID and secret in Clerk, and publish
-the consent screen to "In production". Development and production have separate users.
+### One-time setup
 
-### 2. Configure
+**1. Clerk production instance.** In the Clerk dashboard create the **production** instance for
+your domain (for example `zetamaxx.arnavm.com`) and add the DNS records it asks for. Apply the same
+sign-in settings as in development. For Google sign-in, create a Web application OAuth client in
+Google Cloud Console, paste Clerk's Authorized Redirect URI into it, enter the client ID and secret
+in Clerk, and publish the consent screen to "In production". Development and production have
+separate users.
 
-On the server, in the project folder:
+**2. GitHub repository settings** (Settings → Secrets and variables → Actions):
 
-```sh
-cp .env.example .env
+| Kind | Name | Value |
+|---|---|---|
+| Secret | `DEPLOY_HOST` | The server's address |
+| Secret | `DEPLOY_USER` | The SSH user, who must be allowed to run `docker` |
+| Secret | `DEPLOY_SSH_KEY` | A private key that user accepts |
+| Secret | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk's production publishable key, `pk_live_…` |
+
+The publishable key is not private (it ships to every browser); it is stored with the other
+secrets for convenience. It is fixed into the web image when the image is built, so changing it
+needs a new deploy.
+
+**3. On the server**, create `/opt/zetamaxx/.env` with the two values that must stay private:
+
 ```
-
-and set:
-
-```
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_…
 CLERK_SECRET_KEY=sk_live_…
 ALLOWED_ORIGINS=https://zetamaxx.arnavm.com
-APP_PORT=3100
 ```
 
-`.env` holds the secrets. It is gitignored; never commit it.
+To keep the production values in one place on your own machine, put them in `.env.production` at
+the repo root (gitignored): the two values above plus `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` from
+step 2. Nothing in the project reads that file, and it can be copied to the server as it is:
+`scp .env.production <user>@<server>:/opt/zetamaxx/.env`.
 
-### 3. Build and start
+The deploy refuses to run until this file exists. The `nginx-proxy` Docker network must exist too
+(`docker network create nginx-proxy` if this is the first project on the server).
 
-```sh
-docker compose up -d --build
-docker compose ps          # api should become "healthy", then web starts
-curl -s http://127.0.0.1:3100/api/health     # {"status":"ok","db":"ok"}
-```
-
-The API applies database migrations on startup. The publishable key and the internal API address
-are fixed into the web image when it is built, so rebuild (`--build`) after changing either.
-
-### 4. Point nginx at it
-
-Forward the subdomain to `http://127.0.0.1:3100` and pass the original host and scheme, which the
-sign-in redirects rely on:
+**4. nginx.** Forward the subdomain to the web container and pass the original host and scheme,
+which the sign-in redirects rely on:
 
 ```nginx
 location / {
-    proxy_pass http://127.0.0.1:3100;
+    proxy_pass http://zetamaxx-web:3000;
     proxy_set_header Host $host;
     proxy_set_header X-Forwarded-Host $host;
     proxy_set_header X-Forwarded-Proto $scheme;
@@ -148,36 +154,48 @@ location / {
 }
 ```
 
-### 5. Backups
+### What a deploy does
 
-The database is the file `/data/zetamaxx.db` in the `zetamaxx-data` volume, mounted only into `api`.
-Deleting the volume deletes the data. Add a nightly cron entry on the server:
+1. Runs the backend and frontend tests. A failure stops here.
+2. Builds `zetamaxx-api` and `zetamaxx-web`, tagged with the commit's short hash.
+3. Sends both images to the server and copies `docker-compose.yml` and the scripts to
+   `/opt/zetamaxx`.
+4. Runs `deploy.sh <tag>` on the server: starts the new containers and requests `/api/health`
+   through the web container for up to a minute. That one request passes through the web app, the
+   API and the database. The API applies database migrations before it answers.
+5. If the check fails, the previous release is started again and the workflow fails.
+6. Keeps the current and previous images and deletes older ones.
+
+To go back to the previous release by hand, run this on the server:
+
+```sh
+bash /opt/zetamaxx/rollback.sh
+```
+
+A rollback changes the code, not the database. The older release keeps running on the database as
+the newer one left it, so migrations must only add things (new tables, new columns with defaults).
+
+### Backups
+
+The database is the file `/data/zetamaxx.db` in the `zetamaxx-data` Docker volume, mounted only into
+the API container. Deleting the volume deletes the data. Add a nightly cron entry on the server:
 
 ```
-15 3 * * *  /path/to/zetamaxx/scripts/backup.sh >> /var/log/zetamaxx-backup.log 2>&1
+15 3 * * *  /opt/zetamaxx/backup.sh >> /opt/zetamaxx/backup.log 2>&1
 ```
 
 The script asks the API container for a consistent snapshot (`python -m app.backup`, SQLite's online
-backup API), copies it to `/var/backups/zetamaxx`, and keeps 14 days. Do not back up by copying the
+backup API), copies it to `/opt/zetamaxx/backups`, and keeps 14 days. Do not back up by copying the
 live `.db` file: recent writes sit in a separate WAL file and a plain copy can be corrupt.
 
-To restore: `docker compose stop api`, copy a snapshot over `/data/zetamaxx.db` in the volume, remove
-any `zetamaxx.db-wal` and `zetamaxx.db-shm` next to it, then `docker compose start api`.
+To restore: `docker stop zetamaxx-api`, copy a snapshot over `/data/zetamaxx.db` in the volume,
+remove any `zetamaxx.db-wal` and `zetamaxx.db-shm` next to it, then `docker start zetamaxx-api`.
 
-### Updating
+### Not verified yet
 
-```sh
-git pull && docker compose up -d --build
-```
-
-### Not verified on the dev machine
-
-The Docker images are meant to be built on the server and were not built locally.
-What was checked locally: `docker compose config` accepts the compose file; the web app builds in
-standalone mode without the Clerk secret (as the image build does) and the resulting server serves
-pages, forwards `/api`, and redirects to sign-in correctly behind nginx-style headers; and the
-backup module is covered by tests. The first `docker compose up --build` on the server is the real
-test of the two Dockerfiles.
+The workflow, the compose file and the scripts were checked for syntax and the compose file was
+validated, but the images have not been built and no deploy has run. The first push to
+`main` after the one-time setup is the real test.
 
 ## How a game is kept honest
 
