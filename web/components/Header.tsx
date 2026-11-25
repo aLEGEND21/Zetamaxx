@@ -11,7 +11,7 @@ import { Logo } from "./Logo";
 
 function GearIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
     </svg>
@@ -85,13 +85,13 @@ export function Header() {
               href="/settings"
               aria-label="Custom mode"
               title="Custom mode"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-muted hover:text-text"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-muted transition-colors hover:text-text"
             >
               <GearIcon />
             </Link>
           )}
           <Show when="signed-in">
-            <span className="ml-1.5 flex h-11 items-center">
+            <span className="ml-2 flex h-11 items-center">
               {/* The avatar menu is the signed-in navigation: profile, account, sign out. */}
               {me ? (
                 <UserButton appearance={accountButtonAppearance(me.username)} fallback={<AccountButtonSkeleton />}>
@@ -108,14 +108,14 @@ export function Header() {
           </Show>
           {/* Until Clerk has loaded, nobody knows whether the visitor is signed in. */}
           <ClerkLoading>
-            <span className="ml-1.5 flex h-11 items-center">
+            <span className="ml-2 flex h-11 items-center">
               <AccountButtonSkeleton />
             </span>
           </ClerkLoading>
           <Show when="signed-out">
             <Link
               href="/sign-in"
-              className="ml-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 font-medium hover:border-muted"
+              className="ml-2 flex h-9 items-center rounded-lg border border-border bg-surface px-3 font-medium transition-colors hover:border-muted"
             >
               Sign in
             </Link>

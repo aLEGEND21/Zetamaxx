@@ -24,7 +24,7 @@ export function TimezoneSelect({ me }: { me: Me }) {
     mutationFn: (timezone: string) => api<Me>("/me", { method: "PATCH", body: { timezone } }),
     onSuccess: (updated) => {
       queryClient.setQueryData(["me"], updated);
-      toast(`Timezone set to ${updated.timezone}.`);
+      toast(`Timezone set to ${updated.timezone}`);
     },
     onError: (error) => toast(errorMessage(error)),
   });

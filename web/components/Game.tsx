@@ -11,6 +11,7 @@ import { activeSettings, readPrefs, savePrefs, usePrefs } from "@/lib/prefs";
 import { prefetchTicket, requestTicket, takeReadyTicket, type Ticket } from "@/lib/session";
 import type { GameSettings } from "@/lib/settings";
 import { digitsOnly, displaySeconds } from "@/lib/timer";
+import { BestBadge } from "./BestBadge";
 import { Button } from "./Button";
 import { Results } from "./Results";
 
@@ -33,16 +34,6 @@ type View = {
   startId: string | null;
   save: SaveState;
 };
-
-/** Sized and placed so the crown stands on the text's baseline and reaches the top of its capitals. */
-function CrownIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0.7 16 16" fill="currentColor" aria-hidden="true">
-      <path d="M1.9 4.6a.6.6 0 0 1 .98-.46L5.4 6.2l2.1-3.3a.6.6 0 0 1 1 0l2.1 3.3 2.52-2.06a.6.6 0 0 1 .98.56l-1.1 6.3a.6.6 0 0 1-.6.5H3.6a.6.6 0 0 1-.6-.5L1.9 4.7Z" />
-      <rect x="3" y="12.6" width="10" height="1.4" rx=".7" />
-    </svg>
-  );
-}
 
 /** The Enter key's symbol, as a hint that Enter plays again. */
 function EnterIcon() {
@@ -89,13 +80,7 @@ function SaveStatus({ save }: { save: SaveState }) {
       return <span>Saving…</span>;
     case "saved":
       return save.result.is_pb ? (
-        <span
-          className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3.5 py-1.5 text-xs font-medium leading-none text-white"
-          data-testid="pb-badge"
-        >
-          <CrownIcon />
-          New PR
-        </span>
+        <BestBadge>New PR</BestBadge>
       ) : (
         <span data-testid="saved">
           Saved{save.result.previous_best != null && <> · best <span className="nums">{save.result.previous_best}</span></>}
@@ -104,11 +89,11 @@ function SaveStatus({ save }: { save: SaveState }) {
     case "guest":
       return (
         <span data-testid="guest-prompt">
-          <Link href="/sign-up" className="text-accent underline-offset-2 hover:underline">
+          <Link href="/sign-up" className="text-accent-ink underline-offset-2 hover:underline">
             Sign up to save this score
           </Link>{" "}
           <span className="text-muted">(or </span>
-          <Link href="/sign-in" className="text-accent underline-offset-2 hover:underline">
+          <Link href="/sign-in" className="text-accent-ink underline-offset-2 hover:underline">
             sign in
           </Link>
           <span className="text-muted">) within 15 minutes</span>
@@ -117,7 +102,7 @@ function SaveStatus({ save }: { save: SaveState }) {
     case "queued":
       return <span>Can&apos;t reach the server. Retrying for the next 30 seconds…</span>;
     case "local":
-      return <span>Played offline, so this game wasn&apos;t saved.</span>;
+      return <span>Played offline, so this game wasn&apos;t saved</span>;
     case "empty":
       return <span data-testid="not-attempted">Game not attempted</span>;
     case "rejected":
@@ -300,7 +285,7 @@ export function Game() {
 
   return (
     <div className="relative mx-auto flex w-full max-w-content flex-1 flex-col px-4">
-      <div className="nums flex justify-between pt-3.5 text-sm text-muted">
+      <div className="nums flex justify-between pt-4 text-sm text-muted">
         <span aria-live="polite" data-testid="score">
           Score {view.score}
         </span>
@@ -351,9 +336,10 @@ export function Game() {
               ref={restartRef}
               type="button"
               onClick={() => void start()}
-              className="mt-8 rounded px-2 py-1 text-xs text-muted hover:text-text"
+              aria-keyshortcuts="Escape"
+              className="mt-8 inline-flex items-center gap-2 rounded px-2 py-1 text-xs text-muted transition-colors hover:text-text"
             >
-              Restart <span className="nums opacity-70">(Esc)</span>
+              Restart <kbd>Esc</kbd>
             </button>
           </div>
         )}

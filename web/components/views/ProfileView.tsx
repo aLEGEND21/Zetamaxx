@@ -29,7 +29,7 @@ const ProgressChart = dynamic(() => import("@/components/charts/ProgressChart").
 
 function Tile({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
-    <div className="rounded-card border border-border bg-surface p-4">
+    <div className="rounded-card border border-border bg-surface p-4 sm:p-5">
       <p className="text-xs text-muted">{label}</p>
       <p className="nums mt-1 text-2xl font-medium">{value}</p>
       {note && <p className="mt-0.5 text-xs text-muted">{note}</p>}
@@ -69,7 +69,7 @@ function Charts({ username, hash }: { username: string; hash: string | null }) {
         ) : series.isError ? (
           <ErrorNote>{errorMessage(series.error)}</ErrorNote>
         ) : series.data.points.length === 0 ? (
-          <EmptyState>No games in this period.</EmptyState>
+          <EmptyState>No games in this period</EmptyState>
         ) : (
           <div className={series.isPlaceholderData ? "opacity-60 transition-opacity" : "transition-opacity"}>
             <ProgressChart series={series.data} />
@@ -79,7 +79,7 @@ function Charts({ username, hash }: { username: string; hash: string | null }) {
 
       <Card title="Activity">
         {activity.isPending ? (
-          <Skeleton className="h-36" />
+          <Skeleton className="h-39" />
         ) : activity.isError ? (
           <ErrorNote>{errorMessage(activity.error)}</ErrorNote>
         ) : (
@@ -119,7 +119,7 @@ export function ProfileView() {
       <PageShell>
         <div className="mx-auto max-w-md py-16 text-center">
           <h1 className="text-xl font-semibold">{missing ? "No such player" : "Couldn't load this profile"}</h1>
-          <p className="mt-2 text-sm text-muted">{missing ? `Nobody here is called “${username}”.` : errorMessage(overview.error)}</p>
+          <p className="mt-2 text-sm text-muted">{missing ? `Nobody here is called “${username}”` : errorMessage(overview.error)}</p>
         </div>
       </PageShell>
     );
@@ -222,13 +222,13 @@ export function ProfileView() {
                 {base.is_self ? (
                   <>
                     No games yet.{" "}
-                    <Link href="/" className="text-accent underline-offset-2 hover:underline">
+                    <Link href="/" className="text-accent-ink underline-offset-2 hover:underline">
                       Play your first one
                     </Link>
                     .
                   </>
                 ) : (
-                  "No games yet."
+                  "No games yet"
                 )}
               </EmptyState>
             </Card>
@@ -238,7 +238,7 @@ export function ProfileView() {
               <Card title="Recent games">
                 <GameList
                   path={hash ? `/games?user=${user.username}&settings_hash=${hash}` : `/games?user=${user.username}&ranked=true`}
-                  empty="No games yet."
+                  empty="No games yet"
                 />
               </Card>
             </>

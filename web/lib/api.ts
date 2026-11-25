@@ -62,5 +62,5 @@ export async function api<T>(path: string, { method = "GET", body, signal }: Opt
 export function errorMessage(error: unknown): string {
   if (error instanceof NetworkError) return "Can't reach the server. Check your connection.";
   if (error instanceof Error) return error.message;
-  return "Something went wrong.";
+  return "Something went wrong";
 }

@@ -40,7 +40,7 @@ function PendingSync() {
       onLateEvent(({ outcome, source }) => {
         if (outcome.state === "saved") {
           const score = outcome.result.score;
-          toast(source === "claim" ? `Saved your score of ${score} to your account.` : `Saved your game (score ${score}).`);
+          toast(source === "claim" ? `Saved your score of ${score} to your account` : `Saved your game (score ${score})`);
           void queryClient.invalidateQueries();
         } else if (outcome.state === "rejected") {
           toast(`A game couldn't be saved: ${outcome.message}`, "error");

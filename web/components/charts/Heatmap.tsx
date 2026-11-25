@@ -7,8 +7,9 @@ import type { Activity } from "@/lib/types";
 import { HEAT_COLORS } from "./theme";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const CELL = 11;
-const GAP = 3;
+// A 16px pitch: a year (53 weeks) spans 844px, which fills the card at the full content width.
+const CELL = 12;
+const GAP = 4;
 
 function level(games: number): number {
   if (games === 0) return 0;
@@ -21,6 +22,16 @@ function level(games: number): number {
 function describe(day: { date: string; games: number }): string {
   const count = day.games === 0 ? "No games" : day.games === 1 ? "1 game" : `${day.games} games`;
   return `${count} on ${formatLocalDate(day.date, true)}`;
+}
+
+/** "12 games", with the figure in the mono font like every other number that changes. */
+function GameCount({ games, none = "0 games" }: { games: number; none?: string }) {
+  if (games === 0) return <>{none}</>;
+  return (
+    <>
+      <span className="nums">{games}</span> {games === 1 ? "game" : "games"}
+    </>
+  );
 }
 
 /** The last 365 days as a contribution-style grid: one column per week, Sunday on top. */
@@ -49,7 +60,7 @@ export function Heatmap({ activity }: { activity: Activity }) {
     <div>
       <div ref={scroller} className="overflow-x-auto pb-1">
         <div style={{ width: weeks * (CELL + GAP) - GAP }}>
-          <div className="relative mb-1 h-4 text-[11px] text-muted" aria-hidden="true">
+          <div className="relative mb-1 h-4 text-xs text-muted" aria-hidden="true">
             {monthLabels.map(({ week, label }) => (
               <span key={`${week}-${label}`} className="absolute" style={{ left: week * (CELL + GAP) }}>
                 {label}
@@ -79,8 +90,16 @@ export function Heatmap({ activity }: { activity: Activity }) {
         </div>
       </div>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
-        <span className="nums" aria-live="off">
-          {hovered ? describe(hovered) : `${activity.total} ${activity.total === 1 ? "game" : "games"} in the last year`}
+        <span aria-live="off">
+          {hovered ? (
+            <>
+              <GameCount games={hovered.games} none="No games" /> on {formatLocalDate(hovered.date, true)}
+            </>
+          ) : (
+            <>
+              <GameCount games={activity.total} /> in the last year
+            </>
+          )}
         </span>
         <span className="flex items-center gap-1" aria-hidden="true">
           Less

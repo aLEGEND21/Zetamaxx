@@ -8,7 +8,11 @@
   --muted: #6b6b6b;
   --border: #e5e5e5;
   --accent: #3b82f6;
+  /* The accent as text, or under white text: dark enough for 4.5:1 on the page and on white. */
+  --accent-ink: #2563eb;
   --danger: #b42318;
+  /* One easing curve for every transition and animation. */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
   color-scheme: light;
 }
 
@@ -19,11 +23,13 @@
   --color-muted: var(--muted);
   --color-border: var(--border);
   --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
   --color-danger: var(--danger);
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
   --radius-card: 12px;
   --container-content: 960px;
+  --default-transition-timing-function: var(--ease);
 }
 
 /* Base styles live in the base layer so Tailwind utilities can override them. */
@@ -40,11 +46,18 @@
     border-radius: 4px;
   }
 
+  /* A keycap: how keyboard shortcuts are shown. */
   kbd {
+    display: inline-block;
+    min-width: 20px;
     border: 1px solid var(--border);
     border-radius: 4px;
-    padding: 1px 5px;
+    padding: 0 4px;
     background: var(--surface);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 18px;
+    text-align: center;
   }
 }
 
@@ -66,7 +79,7 @@
 }
 
 .fade-in {
-  animation: fade-in 160ms ease-out both;
+  animation: fade-in 160ms var(--ease) both;
 }
 
 /* Tiny confirmation when an answer is correct. Purely visual: the next
@@ -83,7 +96,7 @@
 }
 
 .correct-flash {
-  animation: correct-flash 90ms ease-out both;
+  animation: correct-flash 90ms var(--ease) both;
 }
 
 @media (prefers-reduced-motion: reduce) {

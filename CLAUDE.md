@@ -121,8 +121,14 @@ in CI, images shipped over SSH, then `scripts/deploy.sh` on the server starts th
 
 Light theme only, near-monochrome, one blue accent. The colours, fonts, 12px card radius and 960px
 content width are CSS variables in `web/app/globals.css`; use those rather than new values. Numbers
-that change use the mono font with tabular digits. Borders instead of shadows, motion under 180 ms.
-Chart colours and line widths are in `web/components/charts/theme.ts`.
+that change use the mono font with tabular digits. Borders instead of shadows, motion under 180 ms
+on the one easing curve (`--ease`). Chart colours and line widths are in
+`web/components/charts/theme.ts`.
+
+`--accent` is for graphics (the logo, chart lines, the focus ring). Blue text, and any blue fill
+under white text, uses the darker `--accent-ink` (`text-accent-ink`, `bg-accent-ink`), which meets
+4.5:1 contrast. Spacing and control heights sit on a 4px grid. Keyboard shortcuts are shown as
+keycaps with `<kbd>`.
 
 The game screen must stay instant: state in refs, one render tick, the answer advances on the
 keystroke that completes it with no Enter key. There is no start screen: opening `/` starts a game

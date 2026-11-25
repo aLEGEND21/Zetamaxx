@@ -50,14 +50,14 @@ type SegmentedProps<T extends string> = {
 /** A small row of mutually exclusive choices (chart range, leaderboard period...). */
 export function Segmented<T extends string>({ label, value, options, onChange }: SegmentedProps<T>) {
   return (
-    <div className="flex rounded-lg border border-border bg-bg p-0.5 text-xs" role="group" aria-label={label}>
+    <div className="flex h-8 rounded-lg border border-border bg-bg p-0.5 text-xs" role="group" aria-label={label}>
       {options.map((option) => (
         <button
           key={option.value}
           type="button"
           aria-pressed={option.value === value}
           onClick={() => onChange(option.value)}
-          className={`rounded-md px-2.5 py-1 transition-colors duration-150 ${
+          className={`flex items-center rounded-md px-2.5 transition-colors duration-150 ${
             option.value === value ? "bg-surface text-text shadow-[0_0_0_1px_var(--border)]" : "text-muted hover:text-text"
           }`}
         >

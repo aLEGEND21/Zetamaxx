@@ -21,7 +21,7 @@ export function ProfileSkeleton() {
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           {TILE_LABELS.map((label) => (
-            <div key={label} className="rounded-card border border-border bg-surface p-4">
+            <div key={label} className="rounded-card border border-border bg-surface p-4 sm:p-5">
               <p className="text-xs text-muted">{label}</p>
               <Skeleton className="mt-1 h-8 w-16" />
               <Skeleton className="mt-0.5 h-4 w-24" />
@@ -32,7 +32,7 @@ export function ProfileSkeleton() {
           <Skeleton className="h-64" />
         </Card>
         <Card title="Activity">
-          <Skeleton className="h-36" />
+          <Skeleton className="h-39" />
         </Card>
         <Card title="Recent games">
           <div className="space-y-2">
