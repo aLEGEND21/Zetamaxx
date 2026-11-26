@@ -51,22 +51,22 @@ class GameSummary(BaseModel):
     local_date: str
 
     @classmethod
-    def of(cls, game: Game):
-        return cls(**_summary_fields(game))
+    def of(cls, game: Game, named: bool = True):
+        return cls(**_summary_fields(game, named))
 
 
 class GameDetail(GameSummary):
     problems: list[dict]
 
     @classmethod
-    def of(cls, game: Game):
-        return cls(**_summary_fields(game), problems=game.problems)
+    def of(cls, game: Game, named: bool = True):
+        return cls(**_summary_fields(game, named), problems=game.problems)
 
 
-def _summary_fields(game: Game) -> dict:
+def _summary_fields(game: Game, named: bool) -> dict:
     return {
         "id": game.id,
-        "user": UserBrief.model_validate(game.user),
+        "user": UserBrief.of(game.user, named),
         "score": game.score,
         "duration_s": game.duration_s,
         "is_ranked": game.is_ranked,

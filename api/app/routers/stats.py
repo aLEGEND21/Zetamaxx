@@ -7,12 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import optional_user
 from app.db import get_session
-from app.errors import forbidden, not_found
+from app.errors import not_found
 from app.models import User, utcnow
 from app.schemas.user import UserBrief
 from app.services import stats
 from app.services.localtime import today_in
-from app.services.visibility import can_view
+from app.services.visibility import sees_names
 
 router = APIRouter(prefix="/api/users", tags=["stats"])
 
@@ -21,13 +21,6 @@ async def get_target(session: AsyncSession, username: str) -> User:
     target = (await session.execute(select(User).where(User.username == username))).scalar_one_or_none()
     if target is None:
         raise not_found("No such user")
-    return target
-
-
-async def visible_target(session: AsyncSession, viewer: User | None, username: str) -> User:
-    target = await get_target(session, username)
-    if not await can_view(session, viewer, target):
-        raise forbidden("You can't see this player's stats")
     return target
 
 
@@ -40,22 +33,10 @@ async def user_stats(
 ):
     target = await get_target(session, username)
     filters = stats.game_filters(target.id, settings_hash)
-    pb = await stats.personal_best(session, filters)
-
-    if not await can_view(session, viewer, target):
-        # Strangers get the username and PB only.
-        return {
-            "user": {"username": target.username, "display_name": None, "avatar_url": None},
-            "visible": False,
-            "is_self": False,
-            "pb": pb,
-        }
-
     return {
-        "user": UserBrief.model_validate(target).model_dump(),
-        "visible": True,
+        "user": UserBrief.of(target, sees_names(viewer)).model_dump(),
         "is_self": viewer is not None and viewer.id == target.id,
-        "pb": pb,
+        "pb": await stats.personal_best(session, filters),
         "games": await stats.games_count(session, filters),
         "recent_avg": await stats.recent_average(session, filters),
         "improvement": await stats.improvement(session, filters, utcnow()),
@@ -69,12 +50,11 @@ async def user_series(
     username: str,
     range: Literal["7d", "30d", "90d", "1y"] = "7d",
     settings_hash: str | None = None,
-    viewer: User | None = Depends(optional_user),
     session: AsyncSession = Depends(get_session),
 ):
     """Progress over the last N days. The 7-day range has one point per game, at
     the time it was played; longer ranges have one point per day."""
-    target = await visible_target(session, viewer, username)
+    target = await get_target(session, username)
     today = today_in(target.timezone)
     since = today - timedelta(days=stats.RANGE_DAYS[range] - 1)
     filters = stats.game_filters(target.id, settings_hash)
@@ -93,10 +73,9 @@ async def user_series(
 async def user_activity(
     username: str,
     settings_hash: str | None = None,
-    viewer: User | None = Depends(optional_user),
     session: AsyncSession = Depends(get_session),
 ):
-    target = await visible_target(session, viewer, username)
+    target = await get_target(session, username)
     filters = stats.game_filters(target.id, settings_hash)
     days = await stats.activity(session, filters, today_in(target.timezone))
     return {"days": days, "total": sum(day["games"] for day in days)}
@@ -105,9 +84,8 @@ async def user_activity(
 @router.get("/{username}/configs")
 async def user_configs(
     username: str,
-    viewer: User | None = Depends(optional_user),
     session: AsyncSession = Depends(get_session),
 ):
     """Custom (unranked) configurations this user has played, for grouping history."""
-    target = await visible_target(session, viewer, username)
+    target = await get_target(session, username)
     return {"configs": await stats.custom_configs(session, target.id)}

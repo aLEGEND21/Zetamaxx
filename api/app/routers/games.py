@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import optional_user, require_user
 from app.db import get_session
-from app.errors import APIError, forbidden, not_found
+from app.errors import APIError, not_found
 from app.game.settings import STANDARD, is_standard, settings_hash
 from app.models import Game, GameStart, User, utcnow
 from app.models.base import ISO_FORMAT
@@ -25,7 +25,7 @@ from app.schemas.game import (
 )
 from app.services.localtime import local_fields
 from app.services.validation import MIN_HUMAN_MS, Rejected, Validated, op_averages, validate_submission
-from app.services.visibility import can_view
+from app.services.visibility import sees_names
 
 router = APIRouter(prefix="/api/games", tags=["games"])
 
@@ -229,11 +229,11 @@ def page_query(query, cursor: str | None, limit: int, sort: GameSort = "newest")
     return query.order_by(*order).limit(limit + 1)
 
 
-def to_page(games: list[Game], limit: int, sort: GameSort = "newest") -> GamePage:
+def to_page(games: list[Game], limit: int, sort: GameSort = "newest", named: bool = True) -> GamePage:
     has_more = len(games) > limit
     games = games[:limit]
     return GamePage(
-        items=[GameSummary.of(g) for g in games],
+        items=[GameSummary.of(g, named) for g in games],
         next_cursor=_encode_cursor(games[-1], sort) if has_more else None,
     )
 
@@ -257,8 +257,6 @@ async def list_games(
         target = (await session.execute(select(User).where(User.username == user))).scalar_one_or_none()
         if target is None:
             raise not_found("No such user")
-    if not await can_view(session, viewer, target):
-        raise forbidden("You can't see this player's games")
 
     query = select(Game).where(Game.user_id == target.id)
     if ranked is not None:
@@ -266,7 +264,7 @@ async def list_games(
     if settings_hash is not None:
         query = query.where(Game.settings_hash == settings_hash)
     games = (await session.execute(page_query(query, cursor, limit, sort))).scalars().all()
-    return to_page(list(games), limit, sort)
+    return to_page(list(games), limit, sort, sees_names(viewer))
 
 
 @router.get("/{game_id}", response_model=GameDetail)
@@ -278,6 +276,4 @@ async def get_game(
     game = await session.get(Game, game_id)
     if game is None:
         raise not_found("No such game")
-    if not await can_view(session, viewer, game.user):
-        raise forbidden("You can't see this game")
-    return GameDetail.of(game)
+    return GameDetail.of(game, sees_names(viewer))

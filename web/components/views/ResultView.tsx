@@ -11,11 +11,8 @@ import { PageSkeleton } from "@/components/Skeleton";
 import { PageShell } from "@/components/ui";
 import { displayName } from "@/components/UserLink";
 import { ApiError, api, errorMessage } from "@/lib/api";
-import { SOCIAL } from "@/lib/features";
 import { formatLocalDateTime } from "@/lib/format";
 import type { GameDetail, Stats } from "@/lib/types";
-
-const PRIVATE_NOTE = SOCIAL ? "Game details are shared with friends and group members" : "Only the player can see the details of a game";
 
 function Message({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -56,8 +53,6 @@ export function ResultView() {
   if (game.isError) {
     const status = game.error instanceof ApiError ? game.error.status : 0;
     if (status === 404) return <Message title="Game not found">This game doesn&apos;t exist, or was never saved</Message>;
-    if (status === 401) return <Message title="Sign in to see this game">{PRIVATE_NOTE}</Message>;
-    if (status === 403) return <Message title="This game is private">{PRIVATE_NOTE}</Message>;
     return <Message title="Couldn't load this game">{errorMessage(game.error)}</Message>;
   }
 

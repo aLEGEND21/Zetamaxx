@@ -75,7 +75,6 @@ export function JoinView() {
             {errorMessage(join.error)}
           </p>
         )}
-        <p className="mt-6 text-xs text-muted">Members of a group can see each other&apos;s stats and games.</p>
       </>
     );
   }

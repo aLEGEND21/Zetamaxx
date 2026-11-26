@@ -16,6 +16,7 @@ from app.routers.games import PAGE_SIZE, page_query, to_page
 from app.schemas.game import GamePage
 from app.schemas.user import UserBrief
 from app.services import stats
+from app.services.visibility import sees_names
 
 router = APIRouter(prefix="/api", tags=["groups"])
 
@@ -172,7 +173,7 @@ async def preview_invite(
             "name": group.name,
             "description": group.description,
             "member_count": await _member_count(session, group.id),
-            "owner": UserBrief.model_validate(owner).model_dump(),
+            "owner": UserBrief.of(owner, sees_names(user)).model_dump(),
         },
         "already_member": user is not None and await _membership(session, group.id, user.id) is not None,
     }

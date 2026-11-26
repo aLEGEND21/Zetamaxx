@@ -1,4 +1,4 @@
-"""Groups: CRUD, invites, roles, leaderboard, overlay series, feed, and visibility."""
+"""Groups: CRUD, invites, roles, leaderboard, overlay series, and the feed."""
 
 from datetime import timedelta
 
@@ -58,14 +58,18 @@ async def test_group_name_validation(client, make_user):
 
 
 async def test_invite_preview_and_join(client, make_user, clock):
-    alice, bob = await make_user("alice"), await make_user("bob")
+    alice, bob = await make_user("alice", display_name="Alice A"), await make_user("bob")
     group = await create_group(client, alice, description="Friday drills")
     code = group["invite_code"]
 
     # Anyone with the link can preview, signed in or not.
     preview = (await client.get(f"/api/invites/{code}")).json()
     assert preview["group"]["name"] == "Mathletes" and preview["group"]["member_count"] == 1
-    assert preview["group"]["owner"]["username"] == "alice" and preview["already_member"] is False
+    assert preview["already_member"] is False
+    # Signed out, the owner is shown by username only.
+    assert preview["group"]["owner"]["username"] == "alice" and preview["group"]["owner"]["display_name"] is None
+    as_bob = (await client.get(f"/api/invites/{code}", headers=auth(bob))).json()
+    assert as_bob["group"]["owner"]["display_name"] == "Alice A"
     assert (await client.get(f"/api/invites/{code}", headers=auth(alice))).json()["already_member"] is True
 
     # Joining needs an account.
@@ -310,30 +314,3 @@ async def test_group_feed_is_members_ranked_games_newest_first(client, make_user
     ).json()
     assert len(second["items"]) == 4 and second["next_cursor"] is None
     assert all(g["user"]["username"] != "zed" for g in first["items"] + second["items"])
-
-
-# --- visibility through shared groups ----------------------------------------------------------------
-
-
-async def test_sharing_a_group_unlocks_stats_and_games(client, make_user, clock):
-    alice, bob, carol = await make_user("alice"), await make_user("bob"), await make_user("carol")
-    game = await add_game(alice, 42, NOW - timedelta(hours=1))
-    group = await create_group(client, alice)
-
-    async def bob_sees() -> tuple[bool, int, int]:
-        stats = (await client.get("/api/users/alice/stats", headers=auth(bob))).json()
-        games = await client.get("/api/games", params={"user": "alice"}, headers=auth(bob))
-        detail = await client.get(f"/api/games/{game.id}", headers=auth(bob))
-        return stats["visible"], games.status_code, detail.status_code
-
-    assert await bob_sees() == (False, 403, 403)
-    await join(client, group, bob)
-    assert await bob_sees() == (True, 200, 200)
-    assert (await client.get("/api/users/alice/series", headers=auth(bob))).status_code == 200
-    # It works both ways, and carol (not in the group) is still locked out.
-    assert (await client.get("/api/users/bob/stats", headers=auth(alice))).json()["visible"] is True
-    assert (await client.get("/api/users/alice/stats", headers=auth(carol))).json()["visible"] is False
-
-    # Leaving the group locks it again.
-    await client.delete(f"/api/groups/{group['id']}/members/bob", headers=auth(bob))
-    assert await bob_sees() == (False, 403, 403)

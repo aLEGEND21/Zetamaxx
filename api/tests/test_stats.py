@@ -25,7 +25,7 @@ async def get_stats(client, user, viewer=None, **params):
 async def test_empty_profile(client, make_user, clock):
     alice = await make_user("alice")
     body = await get_stats(client, alice)
-    assert body["visible"] is True and body["is_self"] is True
+    assert body["is_self"] is True
     assert body["pb"] is None and body["games"] == 0 and body["recent_avg"] is None
     assert body["improvement"] is None and body["streak"] == 0 and body["last_played"] is None
 
@@ -225,22 +225,21 @@ async def test_changing_timezone_does_not_change_a_past_streak(client, make_user
     assert played(activity_after) == played(activity_before)
 
 
-# --- visibility (strangers) -----------------------------------------------------------------------
+# --- visibility ----------------------------------------------------------------------------------
 
 
-async def test_strangers_and_guests_see_only_username_and_pb(client, make_user, clock):
-    alice, bob = await make_user("alice", display_name="Alice A"), await make_user("bob")
+async def test_everyone_sees_a_profile_and_guests_do_not_get_the_full_name(client, make_user, clock):
+    alice, bob = (
+        await make_user("alice", display_name="Alice A", avatar_url="https://img.example/a.png"),
+        await make_user("bob"),
+    )
     await add_game(alice, 42, utc(2026, 6, 14, 12))
-    for headers in (auth(bob), {}):
-        r = await client.get("/api/users/alice/stats", headers=headers)
-        assert r.status_code == 200
-        assert r.json() == {
-            "user": {"username": "alice", "display_name": None, "avatar_url": None},
-            "visible": False,
-            "is_self": False,
-            "pb": 42,
-        }
+
+    # Bob has no connection to alice at all, and the guest is not even signed in.
+    for headers, name in ((auth(bob), "Alice A"), ({}, None)):
+        seen = (await client.get("/api/users/alice/stats", headers=headers)).json()
+        assert seen["user"] == {"username": "alice", "display_name": name, "avatar_url": "https://img.example/a.png"}
+        assert seen["is_self"] is False and seen["pb"] == 42 and seen["games"] == 1 and "visible" not in seen
         for path in ("series", "activity", "configs"):
-            denied = await client.get(f"/api/users/alice/{path}", headers=headers)
-            assert denied.status_code == 403 and denied.json()["error"]["code"] == "forbidden"
+            assert (await client.get(f"/api/users/alice/{path}", headers=headers)).status_code == 200
     assert (await client.get("/api/users/nobody/stats")).status_code == 404

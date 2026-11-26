@@ -130,11 +130,10 @@ export function ProfileView() {
   const [pickedHash, setPickedHash] = useState<string | null>(null);
 
   const overview = useQuery({ queryKey: ["stats", username, null], queryFn: () => api<Stats>(`/users/${username}/stats`) });
-  const visible = overview.data?.visible === true;
   const configs = useQuery({
     queryKey: ["configs", username],
     queryFn: () => api<{ configs: ConfigSummary[] }>(`/users/${username}/configs`),
-    enabled: visible && CUSTOM_MODE,
+    enabled: overview.isSuccess && CUSTOM_MODE,
   });
   const configList = configs.data?.configs ?? [];
   // In custom mode every number on the page is for one configuration.
@@ -142,7 +141,7 @@ export function ProfileView() {
   const custom = useQuery({
     queryKey: ["stats", username, hash],
     queryFn: () => api<Stats>(withHash(`/users/${username}/stats`, hash)),
-    enabled: visible && hash !== null,
+    enabled: hash !== null,
   });
 
   if (overview.isPending) return <ProfileSkeleton />;
@@ -176,26 +175,6 @@ export function ProfileView() {
       {base.is_self && me && <TimezoneSelect me={me} />}
     </div>
   );
-
-  if (!base.visible) {
-    return (
-      <PageShell>
-        {header}
-        <div className="grid gap-4 sm:grid-cols-4">
-          <Tile label="Personal record" value={formatScore(base.pb)} />
-        </div>
-        <Card className="mt-4">
-          <EmptyState>
-            {!SOCIAL
-              ? "Only the personal record is public. The rest of a player's stats are private."
-              : isSignedIn
-                ? "Full stats are shared with friends and people in the same group."
-                : "Sign in to add this player as a friend. Full stats are shared with friends and group members."}
-          </EmptyState>
-        </Card>
-      </PageShell>
-    );
-  }
 
   const stats = mode === "custom" ? custom.data : base;
   const showModes = configList.length > 0;
@@ -235,11 +214,11 @@ export function ProfileView() {
       ) : (
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <Tile label="Personal record" value={formatScore(stats.pb)} note={`${stats.games ?? 0} ${stats.games === 1 ? "game" : "games"}`} />
+            <Tile label="Personal record" value={formatScore(stats.pb)} note={`${stats.games} ${stats.games === 1 ? "game" : "games"}`} />
             <Tile label="Recent average" value={formatScore(stats.recent_avg, 1)} note="last 10 games" />
             <Tile
               label="Streak"
-              value={`${stats.streak ?? 0}`}
+              value={`${stats.streak}`}
               note={stats.streak === 1 ? "day in a row" : "days in a row"}
             />
             <Tile
@@ -249,7 +228,7 @@ export function ProfileView() {
             />
           </div>
 
-          {(stats.games ?? 0) === 0 ? (
+          {stats.games === 0 ? (
             <Card>
               <EmptyState>
                 {base.is_self ? (

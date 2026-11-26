@@ -441,16 +441,21 @@ async def test_history_filters(client, make_user):
     assert [g["id"] for g in by_hash.json()["items"]] == [custom.id]
 
 
-async def test_history_and_detail_are_private(client, make_user):
-    alice, bob = await make_user("alice"), await make_user("bob")
+async def test_history_and_detail_are_open_but_guests_do_not_get_the_full_name(client, make_user):
+    alice, bob = await make_user("alice", display_name="Alice A"), await make_user("bob")
     game = await add_game(alice, 30, utc(2026, 6, 1, 12))
 
     mine = await client.get(f"/api/games/{game.id}", headers=auth(alice))
     assert mine.status_code == 200 and len(mine.json()["problems"]) == 30
 
-    for headers in (auth(bob), {}):
-        assert (await client.get(f"/api/games/{game.id}", headers=headers)).status_code == 403
-        assert (await client.get("/api/games", params={"user": "alice"}, headers=headers)).status_code == 403
+    # Anyone can open another player's games. A guest gets the username without the full name.
+    for headers, name in ((auth(bob), "Alice A"), ({}, None)):
+        detail = await client.get(f"/api/games/{game.id}", headers=headers)
+        assert detail.status_code == 200 and len(detail.json()["problems"]) == 30
+        listed = (await client.get("/api/games", params={"user": "alice"}, headers=headers)).json()["items"]
+        assert [g["id"] for g in listed] == [game.id]
+        for user in (detail.json()["user"], listed[0]["user"]):
+            assert user["username"] == "alice" and user["display_name"] == name
     assert (await client.get("/api/games")).status_code == 401
     assert (await client.get("/api/games", params={"user": "nobody"}, headers=auth(bob))).status_code == 404
     assert (await client.get("/api/games/missing", headers=auth(bob))).status_code == 404

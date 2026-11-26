@@ -3,6 +3,7 @@
 import type { SolvedProblem } from "./engine";
 import type { GameSettings, Op } from "./settings";
 
+/** `display_name` is null for a player without one, and always for a signed-out viewer. */
 export type UserBrief = { username: string; display_name: string | null; avatar_url: string | null };
 
 export type Me = UserBrief & { id: string; timezone: string; timezone_set: boolean; created_at: string };
@@ -28,17 +29,16 @@ export type Page<T> = { items: T[]; next_cursor: string | null };
 /** The `sort` parameter of `/games`. Games with the same score come newest first. */
 export type GameSort = "newest" | "oldest" | "score_desc" | "score_asc";
 
-/** Strangers only get `user.username` and `pb`; everything else needs `visible`. */
+/** Open to everyone. A signed-out viewer gets `user.display_name` as null. */
 export type Stats = {
   user: UserBrief;
-  visible: boolean;
   is_self: boolean;
   pb: number | null;
-  games?: number;
-  recent_avg?: number | null;
-  improvement?: number | null;
-  streak?: number;
-  last_played?: string | null;
+  games: number;
+  recent_avg: number | null;
+  improvement: number | null;
+  streak: number;
+  last_played: string | null;
 };
 
 export type RangeKey = "30d" | "90d" | "1y" | "all";

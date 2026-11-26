@@ -71,8 +71,9 @@ generator deliberately: `cd api && uv run python -m app.game.fixture`.
 - Frontend: never pass a `YYYY-MM-DD` string to `new Date()` (it shifts a day in US timezones). Use
   the day-number helpers in `web/lib/dates.ts`.
 
-**Who can see what** (`api/app/services/visibility.py`): yourself, accepted friends, and anyone who
-shares a group with you see everything. Everyone else gets username and personal best only.
+**Who can see what** (`api/app/services/visibility.py`): everyone, signed in or not, sees every
+player's stats and games. A player's full name is shown to signed-in viewers only; a guest gets the
+username (`UserBrief.of(user, named=False)`). The timezone picker shows on your own profile only.
 
 **Database:**
 - SQLite with one writer: uvicorn always runs with exactly one worker, in dev and in Docker.
@@ -142,6 +143,6 @@ Enter on the results plays again.
   the flags hide the nav links, controls and pages (which return 404). Keep new UI for these
   features behind the same flags.
 - Ask before adding a feature. Prefer simple, readable code; no state library beyond TanStack Query.
-- Left out on purpose: real-time races, a daily challenge, a weak-spot drill mode, public profiles
-  and a global leaderboard, Clerk webhooks, dark mode, native mobile apps.
+- Left out on purpose: real-time races, a daily challenge, a weak-spot drill mode, a global
+  leaderboard, Clerk webhooks, dark mode, native mobile apps.
 - The schema has an `admin` group role, but no endpoint assigns it yet.

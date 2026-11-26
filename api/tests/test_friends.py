@@ -1,4 +1,4 @@
-"""Friends: requests, accept / decline / cancel, feed, and visibility."""
+"""Friends: requests, accept / decline / cancel, and the feed."""
 
 from datetime import timedelta
 
@@ -160,25 +160,3 @@ async def test_friends_feed(client, make_user, clock):
     assert len(second["items"]) == 3 and second["next_cursor"] is None
     assert (await client.get("/api/friends/feed", headers=auth(dave))).json()["items"] == []
     assert (await client.get("/api/friends/feed")).status_code == 401
-
-
-async def test_friendship_unlocks_stats_only_once_accepted(client, make_user, clock):
-    alice, bob = await make_user("alice"), await make_user("bob")
-    game = await add_game(alice, 42, NOW - timedelta(hours=1))
-
-    async def bob_sees() -> tuple[bool, int, int, int]:
-        stats = (await client.get("/api/users/alice/stats", headers=auth(bob))).json()
-        games = await client.get("/api/games", params={"user": "alice"}, headers=auth(bob))
-        detail = await client.get(f"/api/games/{game.id}", headers=auth(bob))
-        activity = await client.get("/api/users/alice/activity", headers=auth(bob))
-        return stats["visible"], games.status_code, detail.status_code, activity.status_code
-
-    assert await bob_sees() == (False, 403, 403, 403)
-    await request(client, bob, "alice")
-    assert await bob_sees() == (False, 403, 403, 403)  # pending is not enough
-    await client.post("/api/friends/requests/bob/accept", headers=auth(alice))
-    assert await bob_sees() == (True, 200, 200, 200)
-    assert (await client.get("/api/users/bob/stats", headers=auth(alice))).json()["visible"] is True
-
-    await client.delete("/api/friends/bob", headers=auth(alice))
-    assert await bob_sees() == (False, 403, 403, 403)

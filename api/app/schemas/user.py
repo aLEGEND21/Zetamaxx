@@ -11,6 +11,14 @@ class UserBrief(BaseModel):
     display_name: str | None
     avatar_url: str | None
 
+    @classmethod
+    def of(cls, user, named: bool = True):
+        """`named=False` leaves the full name out, for viewers who only get the username."""
+        brief = cls.model_validate(user)
+        if not named:
+            brief.display_name = None
+        return brief
+
 
 class MeOut(UserBrief):
     id: str

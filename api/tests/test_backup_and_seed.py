@@ -52,7 +52,7 @@ async def test_seed_creates_sample_data_and_is_idempotent(client, make_user):
 
     # The real account can see a seeded player's full profile and both leaderboards.
     stats = (await client.get("/api/users/ada/stats", headers=auth(me))).json()
-    assert stats["visible"] is True and stats["pb"] > 30 and stats["streak"] >= 0
+    assert stats["pb"] > 30 and stats["streak"] >= 0
     series = (await client.get("/api/users/ada/series", params={"range": "90d"}, headers=auth(me))).json()
     assert len(series["points"]) > 30
     mine = (await client.get("/api/groups", headers=auth(me))).json()["groups"]
